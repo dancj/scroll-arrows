@@ -3,7 +3,8 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "jsdom",
-    include: ["test/**/*.test.ts"],
+    // .ts unit tests for the library; .mjs tests for the release tooling.
+    include: ["test/**/*.test.ts", "scripts/**/*.test.mjs"],
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts"],
