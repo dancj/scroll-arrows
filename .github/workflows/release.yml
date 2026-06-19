@@ -15,11 +15,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22 # trusted publishing needs Node >= 22.14.0
+          node-version: 24 # Active LTS; satisfies trusted publishing (Node >= 22.14.0)
           cache: npm
           registry-url: "https://registry.npmjs.org"
-      # Trusted publishing (OIDC) needs npm >= 11.5.1; Node 22 ships npm 10.x.
-      - run: npm install -g npm@latest
+      # Node 24 bundles npm >= 11.5.1, which trusted publishing (OIDC) requires.
       - run: npm ci
       # Pin the published version to the tag, so it matches regardless of what
       # package.json on the tagged commit happens to say.
