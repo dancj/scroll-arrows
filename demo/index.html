@@ -5,18 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>scroll-arrows demo</title>
     <style>
-      :root { color-scheme: dark; }
+      :root {
+        color-scheme: dark;
+      }
       body {
         margin: 0;
         font-family: ui-sans-serif, system-ui, sans-serif;
         background: #111317;
         color: #e7e9ee;
       }
-      .intro, .spacer { padding: 4rem 2rem; text-align: center; }
-      .spacer { height: 30vh; color: #555; }
-      h1 { margin-bottom: .3rem; }
-      h2 { text-align: center; color: #9aa4b2; font-size: 1rem; letter-spacing: .04em; text-transform: uppercase; }
-      .section { margin: 55vh auto; max-width: 980px; padding: 0 2rem; }
+      .intro,
+      .spacer {
+        padding: 4rem 2rem;
+        text-align: center;
+      }
+      .spacer {
+        height: 30vh;
+        color: #555;
+      }
+      h1 {
+        margin-bottom: 0.3rem;
+      }
+      h2 {
+        text-align: center;
+        color: #9aa4b2;
+        font-size: 1rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .section {
+        margin: 55vh auto;
+        max-width: 980px;
+        padding: 0 2rem;
+      }
       .stage {
         position: relative;
         min-height: 260px;
@@ -30,21 +51,60 @@
         text-align: center;
         font-weight: 600;
       }
-      .box.brown { background: #6b4a1d; }
-      .box.gray { background: #2a2f37; color: #cfd6df; }
+      .box.brown {
+        background: #6b4a1d;
+      }
+      .box.gray {
+        background: #2a2f37;
+        color: #cfd6df;
+      }
 
       /* layouts */
-      .row { display: flex; justify-content: space-between; align-items: center; }
-      .col { display: flex; flex-direction: column; align-items: center; gap: 9rem; }
-      .diag { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 6rem; }
-      .diag .a { grid-area: 1 / 1; justify-self: start; }
-      .diag .b { grid-area: 2 / 2; justify-self: end; }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 9rem;
+      }
+      .diag {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        gap: 6rem;
+      }
+      .diag .a {
+        grid-area: 1 / 1;
+        justify-self: start;
+      }
+      .diag .b {
+        grid-area: 2 / 2;
+        justify-self: end;
+      }
       /* obstacle sits dead-center on the from→to line so the curve must bend */
-      .avoid { position: relative; height: 180px; }
-      .avoid .box { position: absolute; top: 50%; transform: translateY(-50%); }
-      .avoid #o-b { left: 0; }
-      .avoid #o-a { right: 0; }
-      .avoid #o-obstacle { left: 50%; transform: translate(-50%, -50%); }
+      .avoid {
+        position: relative;
+        height: 180px;
+      }
+      .avoid .box {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+      .avoid #o-b {
+        left: 0;
+      }
+      .avoid #o-a {
+        right: 0;
+      }
+      .avoid #o-obstacle {
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
 
       .code {
         margin: 1.6rem auto 0;
@@ -53,22 +113,41 @@
         border: 1px solid #262a31;
         border-radius: 10px;
         padding: 1rem 1.2rem;
-        font: 13px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+        font:
+          13px/1.55 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
         white-space: pre;
         overflow-x: auto;
         color: #c9d1d9;
       }
-      .code .k { color: #79c0ff; }
-      .code .s { color: #a5d6ff; }
-      .code .n { color: #ffa657; }
-      .code .fn { color: #d2a8ff; }
-      code { background: #000; padding: 0 .3rem; border-radius: 4px; }
+      .code .k {
+        color: #79c0ff;
+      }
+      .code .s {
+        color: #a5d6ff;
+      }
+      .code .n {
+        color: #ffa657;
+      }
+      .code .fn {
+        color: #d2a8ff;
+      }
+      code {
+        background: #000;
+        padding: 0 0.3rem;
+        border-radius: 4px;
+      }
     </style>
   </head>
   <body>
     <div class="intro">
       <h1>scroll-arrows</h1>
-      <p>Scroll down — each arrow draws itself and shows the API call that made it.</p>
+      <p>
+        Scroll down — each arrow draws itself and shows the API call that made
+        it.
+      </p>
     </div>
 
     <section class="section">
@@ -115,42 +194,74 @@
     <div class="spacer">— fin —</div>
 
     <script type="module">
-      import { scrollArrow } from "../src/index.ts";
+      import { scrollArrow } from '../src/index.ts';
 
-      const PAGE_BG = "#111317";
-      const base = { stroke: "#e7e9ee", strokeWidth: 2.5, labelBackground: PAGE_BG };
+      const PAGE_BG = '#111317';
+      const base = {
+        stroke: '#e7e9ee',
+        strokeWidth: 2.5,
+        labelBackground: PAGE_BG,
+      };
 
       // [opts, sectionSelector] — opts drive both the arrow and its code card.
       const examples = [
-        [{ start: "#h-b", end: "#h-a", roughness: 0.0, label: "clean" }],
-        [{ start: "#h2-b", end: "#h2-a", roughness: 1.0, label: "scratchy" }],
-        [{ start: "#v-b", end: "#v-a", roughness: 0.4, curvature: 0.9, label: "flows", labelOffset: 26 }],
-        [{ start: "#d-b", end: "#d-a", roughness: 0.6, curvature: 0.7, label: "diagonal" }],
-        [{ start: "#o-b", end: "#o-a", roughness: 0.5, avoid: "#o-obstacle", avoidPadding: 22, label: "routes around", labelAt: 0.22 }],
+        [{ start: '#h-b', end: '#h-a', roughness: 0.0, label: 'clean' }],
+        [{ start: '#h2-b', end: '#h2-a', roughness: 1.0, label: 'scratchy' }],
+        [
+          {
+            start: '#v-b',
+            end: '#v-a',
+            roughness: 0.4,
+            curvature: 0.9,
+            label: 'flows',
+            labelOffset: 26,
+          },
+        ],
+        [
+          {
+            start: '#d-b',
+            end: '#d-a',
+            roughness: 0.6,
+            curvature: 0.7,
+            label: 'diagonal',
+          },
+        ],
+        [
+          {
+            start: '#o-b',
+            end: '#o-a',
+            roughness: 0.5,
+            avoid: '#o-obstacle',
+            avoidPadding: 22,
+            label: 'routes around',
+            labelAt: 0.22,
+          },
+        ],
       ];
 
       examples.forEach(([opts], i) => {
         const merged = { ...base, ...opts };
         scrollArrow(merged);
 
-        const section = document.querySelectorAll(".section")[i];
-        const card = document.createElement("div");
-        card.className = "code";
+        const section = document.querySelectorAll('.section')[i];
+        const card = document.createElement('div');
+        card.className = 'code';
         card.innerHTML = renderCall(opts); // show the meaningful opts, not base noise
         section.appendChild(card);
       });
 
       // Pretty-print an options object as a highlighted scrollArrow({...}) call.
       function renderCall(opts) {
-        const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+        const esc = (s) =>
+          String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
         const lines = Object.entries(opts).map(([k, v]) => {
           let val;
-          if (typeof v === "string") val = `<span class="s">"${esc(v)}"</span>`;
-          else if (typeof v === "number") val = `<span class="n">${v}</span>`;
+          if (typeof v === 'string') val = `<span class="s">"${esc(v)}"</span>`;
+          else if (typeof v === 'number') val = `<span class="n">${v}</span>`;
           else val = esc(JSON.stringify(v));
           return `  <span class="k">${k}</span>: ${val},`;
         });
-        return `<span class="fn">scrollArrow</span>({\n${lines.join("\n")}\n})`;
+        return `<span class="fn">scrollArrow</span>({\n${lines.join('\n')}\n})`;
       }
     </script>
   </body>

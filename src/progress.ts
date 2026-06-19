@@ -1,5 +1,5 @@
-import type { Point } from "./types";
-import { docRect, type DocRect } from "./geometry";
+import type { Point } from './types';
+import { docRect, type DocRect } from './geometry';
 
 export function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;

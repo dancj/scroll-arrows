@@ -1,15 +1,9 @@
 export type Point = { x: number; y: number };
 
 /** Which edge of an element the arrow attaches to. `auto` picks the best side. */
-export type Socket =
-  | "auto"
-  | "top"
-  | "bottom"
-  | "left"
-  | "right"
-  | "center";
+export type Socket = 'auto' | 'top' | 'bottom' | 'left' | 'right' | 'center';
 
-export type ArrowHead = "start" | "end" | "both" | "none";
+export type ArrowHead = 'start' | 'end' | 'both' | 'none';
 
 /** Anything we can resolve to a live DOM element. */
 export type ElementRef = Element | string;

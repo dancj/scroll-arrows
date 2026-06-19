@@ -11,14 +11,14 @@
 // Pre-1.0 note: while major is 0, `feat:` still bumps minor (0.1 -> 0.2) and
 // breaking bumps major to 1.0.0. Adjust if you want stricter 0.x semantics.
 
-import { fileURLToPath } from "node:url";
+import { fileURLToPath } from 'node:url';
 
 const SEMVER_RE = /^v?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/;
 const BREAKING_TITLE = /^[a-z]+(\([^)]*\))?!:/i;
 const FEAT_TITLE = /^feat(\([^)]*\))?:/i;
 
 export function parseSemver(s) {
-  if (typeof s !== "string" || s.length === 0) {
+  if (typeof s !== 'string' || s.length === 0) {
     throw new Error(`parseSemver: not a string: ${s}`);
   }
   const m = SEMVER_RE.exec(s.trim());
@@ -57,21 +57,21 @@ export function newestVersionTag(tags) {
 }
 
 export function bumpLevelFromPrs(prs = []) {
-  let level = "patch";
+  let level = 'patch';
   for (const pr of prs) {
-    const title = pr.title ?? "";
-    const body = pr.body ?? "";
+    const title = pr.title ?? '';
+    const body = pr.body ?? '';
     if (BREAKING_TITLE.test(title) || /BREAKING CHANGE/.test(body)) {
-      return "major";
+      return 'major';
     }
-    if (FEAT_TITLE.test(title)) level = "minor";
+    if (FEAT_TITLE.test(title)) level = 'minor';
   }
   return level;
 }
 
 export function applyBump({ major, minor, patch }, level) {
-  if (level === "major") return { major: major + 1, minor: 0, patch: 0 };
-  if (level === "minor") return { major, minor: minor + 1, patch: 0 };
+  if (level === 'major') return { major: major + 1, minor: 0, patch: 0 };
+  if (level === 'minor') return { major, minor: minor + 1, patch: 0 };
   return { major, minor, patch: patch + 1 };
 }
 
@@ -88,18 +88,18 @@ export function computeNextVersion(currentVersion, prs = []) {
 // stdin (JSON array). Mostly for manual checks; the orchestrators import the
 // functions directly.
 if (fileURLToPath(import.meta.url) === process.argv[1]) {
-  const current = process.argv[2] ?? "0.0.0";
+  const current = process.argv[2] ?? '0.0.0';
   let prs = [];
   try {
     const raw = await new Promise((res) => {
-      let buf = "";
-      process.stdin.on("data", (d) => (buf += d));
-      process.stdin.on("end", () => res(buf));
-      if (process.stdin.isTTY) res("");
+      let buf = '';
+      process.stdin.on('data', (d) => (buf += d));
+      process.stdin.on('end', () => res(buf));
+      if (process.stdin.isTTY) res('');
     });
     if (raw.trim()) prs = JSON.parse(raw);
   } catch {
     prs = [];
   }
-  process.stdout.write(computeNextVersion(current, prs) + "\n");
+  process.stdout.write(computeNextVersion(current, prs) + '\n');
 }

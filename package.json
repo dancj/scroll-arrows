@@ -55,10 +55,14 @@
     "dev": "tsup --watch",
     "demo": "vite demo",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
-    "prepublishOnly": "npm run typecheck && npm run coverage && npm run build"
+    "prepublishOnly": "npm run lint && npm run typecheck && npm run coverage && npm run build"
   },
   "dependencies": {
     "roughjs": "^4.6.6"
@@ -72,12 +76,18 @@
     }
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@types/react": "^18.3.0",
     "@vitest/coverage-v8": "^2.1.0",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^9.1.2",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "jsdom": "^25.0.0",
+    "prettier": "^3.8.4",
     "react": "^18.3.0",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
+    "typescript-eslint": "^8.61.1",
     "vite": "^5.0.0",
     "vitest": "^2.1.0"
   }
