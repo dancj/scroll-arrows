@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
+      - 'v*'
 
 jobs:
   publish:
@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: 24 # Active LTS; satisfies trusted publishing (Node >= 22.14.0)
           cache: npm
-          registry-url: "https://registry.npmjs.org"
+          registry-url: 'https://registry.npmjs.org'
       # Node 24 bundles npm >= 11.5.1, which trusted publishing (OIDC) requires.
       - run: npm ci
       # Pin the published version to the tag, so it matches regardless of what

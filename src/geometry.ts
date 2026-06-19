@@ -1,10 +1,10 @@
-import type { Point, Socket } from "./types";
+import type { Point, Socket } from './types';
 
-const SIDES: Exclude<Socket, "auto" | "center">[] = [
-  "top",
-  "bottom",
-  "left",
-  "right",
+const SIDES: Exclude<Socket, 'auto' | 'center'>[] = [
+  'top',
+  'bottom',
+  'left',
+  'right',
 ];
 
 /** Document-coordinate rect (survives scrolling, unlike getBoundingClientRect). */
@@ -33,13 +33,13 @@ function center(r: DocRect): Point {
 function socketPoint(r: DocRect, side: Socket): Point {
   const c = center(r);
   switch (side) {
-    case "top":
+    case 'top':
       return { x: c.x, y: r.top };
-    case "bottom":
+    case 'bottom':
       return { x: c.x, y: r.top + r.height };
-    case "left":
+    case 'left':
       return { x: r.left, y: c.y };
-    case "right":
+    case 'right':
       return { x: r.left + r.width, y: c.y };
     default:
       return c;
@@ -49,13 +49,13 @@ function socketPoint(r: DocRect, side: Socket): Point {
 /** Outward unit normal for an edge — direction the curve should leave/enter. */
 function socketNormal(side: Socket): Point {
   switch (side) {
-    case "top":
+    case 'top':
       return { x: 0, y: -1 };
-    case "bottom":
+    case 'bottom':
       return { x: 0, y: 1 };
-    case "left":
+    case 'left':
       return { x: -1, y: 0 };
-    case "right":
+    case 'right':
       return { x: 1, y: 0 };
     default:
       return { x: 0, y: 0 };
@@ -65,7 +65,7 @@ function socketNormal(side: Socket): Point {
 /** Pick the edge whose anchor sits closest to the other element's center. */
 function autoSide(self: DocRect, other: DocRect): Socket {
   const target = center(other);
-  let best: Socket = "right";
+  let best: Socket = 'right';
   let bestDist = Infinity;
   for (const side of SIDES) {
     const p = socketPoint(self, side);
@@ -91,8 +91,8 @@ export function resolveEndpoints(
   startSocket: Socket,
   endSocket: Socket,
 ): Endpoints {
-  const s = startSocket === "auto" ? autoSide(startRect, endRect) : startSocket;
-  const e = endSocket === "auto" ? autoSide(endRect, startRect) : endSocket;
+  const s = startSocket === 'auto' ? autoSide(startRect, endRect) : startSocket;
+  const e = endSocket === 'auto' ? autoSide(endRect, startRect) : endSocket;
   return {
     start: socketPoint(startRect, s),
     end: socketPoint(endRect, e),
@@ -122,8 +122,14 @@ export function buildPath(
   const sn = startNormal.x || startNormal.y ? startNormal : unit(dx, dy);
   const en = endNormal.x || endNormal.y ? endNormal : unit(-dx, -dy);
 
-  const c1 = { x: start.x + sn.x * reach + belly.x, y: start.y + sn.y * reach + belly.y };
-  const c2 = { x: end.x + en.x * reach + belly.x, y: end.y + en.y * reach + belly.y };
+  const c1 = {
+    x: start.x + sn.x * reach + belly.x,
+    y: start.y + sn.y * reach + belly.y,
+  };
+  const c2 = {
+    x: end.x + en.x * reach + belly.x,
+    y: end.y + en.y * reach + belly.y,
+  };
 
   return `M ${r(start.x)} ${r(start.y)} C ${r(c1.x)} ${r(c1.y)} ${r(c2.x)} ${r(c2.y)} ${r(end.x)} ${r(end.y)}`;
 }
@@ -169,7 +175,8 @@ export function routeOffset(
 
     const signed = relx * n.x + rely * n.y; // perpendicular position of center
     // Box half-extent projected onto the normal axis.
-    const radius = Math.abs((b.width / 2) * n.x) + Math.abs((b.height / 2) * n.y);
+    const radius =
+      Math.abs((b.width / 2) * n.x) + Math.abs((b.height / 2) * n.y);
     const clearance = radius + padding;
     if (Math.abs(signed) >= clearance) continue; // line already clears it
 

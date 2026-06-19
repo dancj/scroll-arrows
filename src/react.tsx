@@ -1,15 +1,13 @@
-import {
-  useEffect,
-  useRef,
-  type RefObject,
-} from "react";
-import { ScrollArrow } from "./scroll-arrow";
-import type { ScrollArrowOptions } from "./types";
+import { useEffect, useRef, type RefObject } from 'react';
+import { ScrollArrow } from './scroll-arrow';
+import type { ScrollArrowOptions } from './types';
 
 type Anchor = RefObject<Element | null> | Element | string;
 
-export interface UseScrollArrowOptions
-  extends Omit<ScrollArrowOptions, "start" | "end"> {
+export interface UseScrollArrowOptions extends Omit<
+  ScrollArrowOptions,
+  'start' | 'end'
+> {
   start: Anchor;
   end: Anchor;
   /** Re-create the arrow when any value here changes. */
@@ -17,7 +15,7 @@ export interface UseScrollArrowOptions
 }
 
 function read(a: Anchor): Element | string | null {
-  if (typeof a === "string") return a;
+  if (typeof a === 'string') return a;
   if (a instanceof Element) return a;
   return a.current;
 }
@@ -44,7 +42,7 @@ export function useScrollArrow(options: UseScrollArrowOptions): void {
   }, deps);
 }
 
-export interface ScrollArrowProps extends UseScrollArrowOptions {}
+export type ScrollArrowProps = UseScrollArrowOptions;
 
 /** Declarative component form. Renders nothing itself. */
 export function ScrollArrowLine(props: ScrollArrowProps): null {

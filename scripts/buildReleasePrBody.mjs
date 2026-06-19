@@ -8,51 +8,55 @@ import {
   categorizePr,
   sanitizeTitle,
   neutralizeClosingKeywords,
-} from "./releaseCategorize.mjs";
+} from './releaseCategorize.mjs';
 
-export const DELIMITER_START = "<!-- release-pr:start -->";
-export const DELIMITER_END = "<!-- release-pr:end -->";
+export const DELIMITER_START = '<!-- release-pr:start -->';
+export const DELIMITER_END = '<!-- release-pr:end -->';
 
 const MANAGEMENT_NOTICE =
-  "<!-- managed by .github/workflows/auto-release-pr.yml — do not edit between markers -->";
-const SECTION_ORDER = ["Features", "Fixes", "Docs", "Maintenance"];
+  '<!-- managed by .github/workflows/auto-release-pr.yml — do not edit between markers -->';
+const SECTION_ORDER = ['Features', 'Fixes', 'Docs', 'Maintenance'];
 
-export function renderReleaseBody({ prs = [], closesIssues = [], version } = {}) {
+export function renderReleaseBody({
+  prs = [],
+  closesIssues = [],
+  version,
+} = {}) {
   const grouped = { Features: [], Fixes: [], Docs: [], Maintenance: [] };
   for (const pr of prs) {
     const section = categorizePr({
-      title: pr.title ?? "",
+      title: pr.title ?? '',
       labels: (pr.labels ?? []).map(asLabelName),
     });
     grouped[section].push(pr);
   }
 
-  const lines = [DELIMITER_START, ""];
+  const lines = [DELIMITER_START, ''];
 
   if (version) {
-    lines.push(`### Proposed release: \`v${version}\``, "");
+    lines.push(`### Proposed release: \`v${version}\``, '');
   }
 
   if (closesIssues.length > 0) {
-    lines.push("## Closes", "");
-    lines.push(closesIssues.map((n) => `Closes #${n}`).join(", "));
-    lines.push("");
+    lines.push('## Closes', '');
+    lines.push(closesIssues.map((n) => `Closes #${n}`).join(', '));
+    lines.push('');
   }
 
   for (const section of SECTION_ORDER) {
     const items = grouped[section];
     if (items.length === 0) continue;
-    lines.push(`## ${section}`, "");
+    lines.push(`## ${section}`, '');
     for (const pr of items) {
-      const title = sanitizeTitle(pr.title ?? "");
-      const author = pr.author?.login ?? "unknown";
+      const title = sanitizeTitle(pr.title ?? '');
+      const author = pr.author?.login ?? 'unknown';
       lines.push(`- #${pr.number} — ${title} (@${author})`);
     }
-    lines.push("");
+    lines.push('');
   }
 
   lines.push(MANAGEMENT_NOTICE, DELIMITER_END);
-  return lines.join("\n");
+  return lines.join('\n');
 }
 
 export function injectIntoBody(existingBody, managedBlock) {
@@ -67,7 +71,10 @@ export function injectIntoBody(existingBody, managedBlock) {
     if (startIdx < endIdx) {
       const before = existingBody.slice(0, startIdx);
       const after = existingBody.slice(endIdx + DELIMITER_END.length);
-      const oldBlock = existingBody.slice(startIdx, endIdx + DELIMITER_END.length);
+      const oldBlock = existingBody.slice(
+        startIdx,
+        endIdx + DELIMITER_END.length,
+      );
       if (oldBlock === managedBlock) return existingBody;
       return before + managedBlock + after;
     }
@@ -75,17 +82,17 @@ export function injectIntoBody(existingBody, managedBlock) {
 
   // Malformed: strip all markers, neutralise surviving closing keywords,
   // append a fresh block at the end.
-  let surviving = existingBody.split(DELIMITER_START).join("");
-  surviving = surviving.split(DELIMITER_END).join("");
+  let surviving = existingBody.split(DELIMITER_START).join('');
+  surviving = surviving.split(DELIMITER_END).join('');
   surviving = neutralizeClosingKeywords(surviving);
-  surviving = surviving.replace(/\s+$/u, "");
-  return surviving + "\n\n" + managedBlock;
+  surviving = surviving.replace(/\s+$/u, '');
+  return surviving + '\n\n' + managedBlock;
 }
 
 function asLabelName(label) {
-  if (typeof label === "string") return label;
-  if (label && typeof label.name === "string") return label.name;
-  return "";
+  if (typeof label === 'string') return label;
+  if (label && typeof label.name === 'string') return label.name;
+  return '';
 }
 
 function countOccurrences(haystack, needle) {

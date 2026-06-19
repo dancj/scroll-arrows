@@ -1,6 +1,6 @@
-import rough from "roughjs";
-import type { RoughSVG } from "roughjs/bin/svg";
-import type { ScrollArrowOptions, ElementRef, Socket } from "./types";
+import rough from 'roughjs';
+import type { RoughSVG } from 'roughjs/bin/svg';
+import type { ScrollArrowOptions, ElementRef, Socket } from './types';
 import {
   docRect,
   resolveEndpoints,
@@ -12,16 +12,16 @@ import {
   routeOffset,
   type Endpoints,
   type Box,
-} from "./geometry";
+} from './geometry';
 import {
   scrollProgress,
   midpointRect,
   easeInOutCubic,
   clamp01,
-} from "./progress";
-import { getOverlay, overlayOrigin, createGroup, createSvgEl } from "./overlay";
-import { mapRoughness, deriveSeed } from "./roughness";
-import { dashOffsets, lineProgress, labelOpacity } from "./draw";
+} from './progress';
+import { getOverlay, overlayOrigin, createGroup, createSvgEl } from './overlay';
+import { mapRoughness, deriveSeed } from './roughness';
+import { dashOffsets, lineProgress, labelOpacity } from './draw';
 
 interface ResolvedRefs {
   start: Element;
@@ -32,7 +32,16 @@ interface ResolvedRefs {
 /** A single hand-drawn arrow that draws itself between two elements on scroll. */
 export class ScrollArrow {
   private opts: Required<
-    Pick<ScrollArrowOptions, "roughness" | "strokeWidth" | "head" | "headSize" | "speed" | "easing" | "progress">
+    Pick<
+      ScrollArrowOptions,
+      | 'roughness'
+      | 'strokeWidth'
+      | 'head'
+      | 'headSize'
+      | 'speed'
+      | 'easing'
+      | 'progress'
+    >
   > &
     ScrollArrowOptions;
   private container: Element;
@@ -50,7 +59,7 @@ export class ScrollArrow {
   private segments: {
     el: SVGPathElement;
     len: number;
-    kind: "line" | "head";
+    kind: 'line' | 'head';
   }[] = [];
   /** Representative line stroke + label nodes, when a label is set. */
   private lineEl: SVGPathElement | null = null;
@@ -66,7 +75,7 @@ export class ScrollArrow {
     this.opts = {
       roughness: 0.5,
       strokeWidth: 2,
-      head: "end",
+      head: 'end',
       headSize: 14,
       speed: 1,
       easing: easeInOutCubic,
@@ -81,10 +90,9 @@ export class ScrollArrow {
 
     this.refs = this.resolveRefs();
     this.stroke =
-      options.stroke ?? getComputedStyle(this.container).color ?? "#222";
+      options.stroke ?? getComputedStyle(this.container).color ?? '#222';
     this.seed =
-      options.seed ??
-      deriveSeed(refKey(options.start), refKey(options.end));
+      options.seed ?? deriveSeed(refKey(options.start), refKey(options.end));
 
     this.render();
     this.bind();
@@ -106,8 +114,8 @@ export class ScrollArrow {
   destroy(): void {
     this.destroyed = true;
     this.ro?.disconnect();
-    window.removeEventListener("scroll", this.onScroll, true);
-    window.removeEventListener("resize", this.onScroll);
+    window.removeEventListener('scroll', this.onScroll, true);
+    window.removeEventListener('resize', this.onScroll);
     cancelAnimationFrame(this.rafId);
     this.group.remove();
   }
@@ -118,7 +126,7 @@ export class ScrollArrow {
     const start = resolve(this.opts.start);
     const end = resolve(this.opts.end);
     if (!start || !end) {
-      throw new Error("[scroll-arrows] start/end element not found");
+      throw new Error('[scroll-arrows] start/end element not found');
     }
     const scroll = this.opts.scroll;
     let target: Element | null = null;
@@ -138,8 +146,8 @@ export class ScrollArrow {
   private computeEndpoints(): Endpoints {
     const sr = docRect(this.refs.start);
     const er = docRect(this.refs.end);
-    const ss: Socket = this.opts.startSocket ?? "auto";
-    const es: Socket = this.opts.endSocket ?? "auto";
+    const ss: Socket = this.opts.startSocket ?? 'auto';
+    const es: Socket = this.opts.endSocket ?? 'auto';
     return resolveEndpoints(sr, er, ss, es);
   }
 
@@ -188,23 +196,23 @@ export class ScrollArrow {
     const BOW = 1.6;
     const belly = { x: clear.x * BOW, y: clear.y * BOW };
     const d = buildPath(local, curvature, belly);
-    this.appendDrawable(this.rc.path(d, roughOpts), "line");
+    this.appendDrawable(this.rc.path(d, roughOpts), 'line');
 
     // Arrowheads.
     const head = this.opts.head;
     const size = this.opts.headSize;
-    if (head === "end" || head === "both") {
+    if (head === 'end' || head === 'both') {
       const dir = endTangent(local);
       this.appendDrawable(
         this.rc.path(arrowHeadPath(local.end, dir, size), roughOpts),
-        "head",
+        'head',
       );
     }
-    if (head === "start" || head === "both") {
+    if (head === 'start' || head === 'both') {
       const dir = startTangent(local);
       this.appendDrawable(
         this.rc.path(arrowHeadPath(local.start, dir, size), roughOpts),
-        "head",
+        'head',
       );
     }
 
@@ -216,7 +224,7 @@ export class ScrollArrow {
       seg.len = seg.el.getTotalLength();
       seg.el.style.strokeDasharray = String(seg.len);
       seg.el.style.strokeDashoffset = String(seg.len);
-      if (seg.kind === "line" && seg.len >= longest) {
+      if (seg.kind === 'line' && seg.len >= longest) {
         longest = seg.len;
         this.lineEl = seg.el;
       }
@@ -244,20 +252,24 @@ export class ScrollArrow {
     let y = pt.y;
     if (offset && total > 0) {
       const eps = Math.min(1, total / 2);
-      const before = this.lineEl.getPointAtLength(Math.max(0, at * total - eps));
-      const after = this.lineEl.getPointAtLength(Math.min(total, at * total + eps));
+      const before = this.lineEl.getPointAtLength(
+        Math.max(0, at * total - eps),
+      );
+      const after = this.lineEl.getPointAtLength(
+        Math.min(total, at * total + eps),
+      );
       const n = unitNormal(before, after);
       x += n.x * offset;
       y += n.y * offset;
     }
 
-    const label = createSvgEl("text");
+    const label = createSvgEl('text');
     label.textContent = text;
-    label.setAttribute("x", String(x));
-    label.setAttribute("y", String(y));
-    label.setAttribute("text-anchor", "middle");
-    label.setAttribute("dominant-baseline", "central");
-    label.style.font = this.opts.font ?? "600 16px sans-serif";
+    label.setAttribute('x', String(x));
+    label.setAttribute('y', String(y));
+    label.setAttribute('text-anchor', 'middle');
+    label.setAttribute('dominant-baseline', 'central');
+    label.style.font = this.opts.font ?? '600 16px sans-serif';
     label.style.fill = this.opts.labelColor ?? this.stroke;
     this.group.appendChild(label);
 
@@ -265,16 +277,16 @@ export class ScrollArrow {
     const bgColor =
       this.opts.labelBackground ??
       getComputedStyle(this.container).backgroundColor;
-    if (bgColor && bgColor !== "none") {
+    if (bgColor && bgColor !== 'none') {
       const pad = 6;
       const box = label.getBBox();
-      const rect = createSvgEl("rect");
-      rect.setAttribute("x", String(box.x - pad));
-      rect.setAttribute("y", String(box.y - pad / 2));
-      rect.setAttribute("width", String(box.width + pad * 2));
-      rect.setAttribute("height", String(box.height + pad));
-      rect.setAttribute("rx", "4");
-      rect.setAttribute("fill", bgColor);
+      const rect = createSvgEl('rect');
+      rect.setAttribute('x', String(box.x - pad));
+      rect.setAttribute('y', String(box.y - pad / 2));
+      rect.setAttribute('width', String(box.width + pad * 2));
+      rect.setAttribute('height', String(box.height + pad));
+      rect.setAttribute('rx', '4');
+      rect.setAttribute('fill', bgColor);
       this.group.insertBefore(rect, label); // behind the text, over the line
       this.labelBgEl = rect;
     }
@@ -282,11 +294,11 @@ export class ScrollArrow {
   }
 
   /** roughjs returns a <g> of one or more <path>; collect them in order. */
-  private appendDrawable(g: SVGGElement, kind: "line" | "head"): void {
-    const paths = g.querySelectorAll("path");
+  private appendDrawable(g: SVGGElement, kind: 'line' | 'head'): void {
+    const paths = g.querySelectorAll('path');
     paths.forEach((p) => {
       const el = p as SVGPathElement;
-      el.setAttribute("fill", "none");
+      el.setAttribute('fill', 'none');
       this.group.appendChild(el);
       this.segments.push({ el, len: 0, kind });
     });
@@ -320,8 +332,8 @@ export class ScrollArrow {
     this.ro = new ResizeObserver(() => this.render());
     targets.forEach((t) => this.ro!.observe(t));
     if (this.opts.scroll !== false) {
-      window.addEventListener("scroll", this.onScroll, true);
-      window.addEventListener("resize", this.onScroll);
+      window.addEventListener('scroll', this.onScroll, true);
+      window.addEventListener('resize', this.onScroll);
     }
   }
 
@@ -351,11 +363,13 @@ export class ScrollArrow {
 }
 
 function resolve(ref: ElementRef): Element | null {
-  return typeof ref === "string" ? document.querySelector(ref) : ref;
+  return typeof ref === 'string' ? document.querySelector(ref) : ref;
 }
 
 function refKey(ref: ElementRef): string {
-  return typeof ref === "string" ? ref : ref.tagName + (ref.id ? "#" + ref.id : "");
+  return typeof ref === 'string'
+    ? ref
+    : ref.tagName + (ref.id ? '#' + ref.id : '');
 }
 
 function clampAt(t: number): number {
