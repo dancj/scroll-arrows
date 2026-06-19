@@ -19,6 +19,21 @@ describe("mapRoughness", () => {
     expect(curvature).toBeCloseTo(0.6);
   });
 
+  it("pins endpoints by default at every roughness level", () => {
+    expect(mapRoughness(0, undefined, "#000", 2, 1).rough.preserveVertices).toBe(
+      true,
+    );
+    expect(mapRoughness(1, undefined, "#000", 2, 1).rough.preserveVertices).toBe(
+      true,
+    );
+  });
+
+  it("lets anchorEnds=false free the endpoints to wander", () => {
+    expect(
+      mapRoughness(1, undefined, "#000", 2, 1, false).rough.preserveVertices,
+    ).toBe(false);
+  });
+
   it("clamps out-of-range input", () => {
     expect(mapRoughness(5, undefined, "#000", 2, 1).rough.roughness).toBeCloseTo(
       3.5,

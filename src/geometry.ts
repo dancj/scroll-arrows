@@ -104,9 +104,14 @@ export function resolveEndpoints(
 /**
  * Build a cubic-bezier `d` string between endpoints. Control points are pushed
  * out along each socket normal so the curve leaves/enters edges cleanly.
- * `curvature` (0..~1) scales how far the controls bow out.
+ * `curvature` (0..~1) scales how far the controls bow out. `belly` is an extra
+ * displacement (e.g. from obstacle routing) added to both control points.
  */
-export function buildPath(ep: Endpoints, curvature: number): string {
+export function buildPath(
+  ep: Endpoints,
+  curvature: number,
+  belly: Point = { x: 0, y: 0 },
+): string {
   const { start, end, startNormal, endNormal } = ep;
   const dx = end.x - start.x;
   const dy = end.y - start.y;
@@ -117,10 +122,66 @@ export function buildPath(ep: Endpoints, curvature: number): string {
   const sn = startNormal.x || startNormal.y ? startNormal : unit(dx, dy);
   const en = endNormal.x || endNormal.y ? endNormal : unit(-dx, -dy);
 
-  const c1 = { x: start.x + sn.x * reach, y: start.y + sn.y * reach };
-  const c2 = { x: end.x + en.x * reach, y: end.y + en.y * reach };
+  const c1 = { x: start.x + sn.x * reach + belly.x, y: start.y + sn.y * reach + belly.y };
+  const c2 = { x: end.x + en.x * reach + belly.x, y: end.y + en.y * reach + belly.y };
 
   return `M ${r(start.x)} ${r(start.y)} C ${r(c1.x)} ${r(c1.y)} ${r(c2.x)} ${r(c2.y)} ${r(end.x)} ${r(end.y)}`;
+}
+
+/** Axis-aligned box, in the same coordinate space as the endpoints. */
+export interface Box {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Lateral displacement to bow the curve around blocking boxes. Returns the
+ * dominant push (perpendicular to the start→end line) needed to clear the
+ * worst obstacle; {0,0} when nothing blocks. A pragmatic single-bend router —
+ * not a full path-finder.
+ */
+export function routeOffset(
+  start: Point,
+  end: Point,
+  obstacles: Box[],
+  padding = 14,
+): Point {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const t = { x: dx / len, y: dy / len };
+  const n = { x: dy / len, y: -dx / len }; // left-hand normal
+
+  let best: Point = { x: 0, y: 0 };
+  let bestMag = 0;
+
+  for (const b of obstacles) {
+    const cx = b.left + b.width / 2;
+    const cy = b.top + b.height / 2;
+    const relx = cx - start.x;
+    const rely = cy - start.y;
+
+    // Longitudinal position along the line, 0..1 — ignore boxes off the ends.
+    const u = (relx * t.x + rely * t.y) / len;
+    if (u < 0 || u > 1) continue;
+
+    const signed = relx * n.x + rely * n.y; // perpendicular position of center
+    // Box half-extent projected onto the normal axis.
+    const radius = Math.abs((b.width / 2) * n.x) + Math.abs((b.height / 2) * n.y);
+    const clearance = radius + padding;
+    if (Math.abs(signed) >= clearance) continue; // line already clears it
+
+    // Bow to the side opposite the obstacle center, just far enough to clear.
+    const sign = signed > 0 ? -1 : 1;
+    const offset = signed + sign * clearance;
+    if (Math.abs(offset) > bestMag) {
+      bestMag = Math.abs(offset);
+      best = { x: n.x * offset, y: n.y * offset };
+    }
+  }
+  return best;
 }
 
 /** Two short strokes forming an arrowhead at `tip`, opening along `dir`. */

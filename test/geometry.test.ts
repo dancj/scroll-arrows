@@ -6,7 +6,9 @@ import {
   endTangent,
   startTangent,
   unitNormal,
+  routeOffset,
   type DocRect,
+  type Box,
 } from "../src/geometry";
 
 const A: DocRect = { left: 0, top: 0, width: 100, height: 100 };
@@ -109,6 +111,62 @@ describe("unitNormal", () => {
 
   it("returns zero for a degenerate segment", () => {
     expect(unitNormal({ x: 5, y: 5 }, { x: 5, y: 5 })).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe("routeOffset", () => {
+  // horizontal line from (0,0) to (200,0); left normal points up (-y).
+  const start = { x: 0, y: 0 };
+  const end = { x: 200, y: 0 };
+  const box = (b: Partial<Box>): Box => ({
+    left: 0,
+    top: 0,
+    width: 20,
+    height: 20,
+    ...b,
+  });
+
+  it("returns zero when there are no obstacles", () => {
+    expect(routeOffset(start, end, [])).toEqual({ x: 0, y: 0 });
+  });
+
+  it("returns zero for a box that does not block the line", () => {
+    // centered at (100, 200): far below the line, clears easily.
+    const off = routeOffset(start, end, [box({ left: 90, top: 190 })]);
+    expect(off).toEqual({ x: 0, y: 0 });
+  });
+
+  it("returns zero for a box past the endpoints longitudinally", () => {
+    // centered at (-100, 0): behind the start.
+    const off = routeOffset(start, end, [box({ left: -110, top: -10 })]);
+    expect(off).toEqual({ x: 0, y: 0 });
+  });
+
+  it("bows the curve perpendicular to clear a box on the line", () => {
+    // box straddling the line at x≈100 (center 100,0), 20x20, padding 14.
+    const off = routeOffset(start, end, [box({ left: 90, top: -10 })], 14);
+    expect(off.x).toBeCloseTo(0); // push is purely perpendicular (vertical)
+    // center signed offset 0 -> push to +1 side along normal (-y): clearance
+    // = radius(10) + padding(14) = 24, along normal (0,-1) -> y = -24.
+    expect(off.y).toBeCloseTo(-24);
+  });
+
+  it("pushes to the side opposite the obstacle center", () => {
+    // box center slightly above the line (negative y -> signed positive on the
+    // up-normal) should push the curve down (+y).
+    const off = routeOffset(start, end, [box({ left: 90, top: -18 })], 14);
+    expect(off.y).toBeGreaterThan(0);
+  });
+
+  it("picks the worst blocker among several", () => {
+    const off = routeOffset(
+      start,
+      end,
+      [box({ left: 50, top: -6, width: 12, height: 12 }), box({ left: 120, top: -40, width: 60, height: 60 })],
+      14,
+    );
+    // the larger, line-crossing box at x=150 dominates.
+    expect(Math.abs(off.y)).toBeGreaterThan(20);
   });
 });
 

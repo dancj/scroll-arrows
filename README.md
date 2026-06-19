@@ -40,6 +40,11 @@ arrow.destroy();
   `speed` finishes the stroke earlier/later; `easing` shapes the curve.
 - **Roughness** — one knob mapped onto rough.js `roughness`/`bowing` plus path
   curvature. `seed` keeps a given arrow's scribble stable across renders.
+  Endpoints stay pinned to the anchors at any roughness (`anchorEnds`, default
+  true); set it false to let scratchy ends wander off the targets.
+- **Obstacle routing** — pass `avoid` (an element or array) and the curve bows
+  around them with an `avoidPadding` gap instead of cutting through. Single-bend
+  router: it clears the worst blocker, not a full path-finder.
 - **Manual mode** — `scroll: false` + `setProgress(0..1)` to drive it yourself
   (e.g. from GSAP/Motion).
 - **Labels** — `label` rides along the line at `labelAt` (0..1, default mid)

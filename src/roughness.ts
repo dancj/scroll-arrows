@@ -10,6 +10,7 @@ export function mapRoughness(
   stroke: string,
   strokeWidth: number,
   seed: number,
+  anchorEnds = true,
 ): { rough: RoughOptions; curvature: number } {
   const r = clamp01(roughness);
   return {
@@ -20,7 +21,9 @@ export function mapRoughness(
       maxRandomnessOffset: r * 4,
       // Clean end of the spectrum: a single, near-exact stroke.
       disableMultiStroke: r < 0.15,
-      preserveVertices: r < 0.15,
+      // Pin endpoints to the sockets so the arrow always lands on its anchors,
+      // even when the middle of the stroke gets scratchy.
+      preserveVertices: anchorEnds,
       stroke,
       strokeWidth,
       seed: seed | 0,

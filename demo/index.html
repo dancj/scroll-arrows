@@ -13,27 +13,42 @@
         color: #e7e9ee;
       }
       .intro, .spacer { padding: 4rem 2rem; text-align: center; }
-      .spacer { height: 40vh; color: #555; }
-      .step { margin: 60vh auto; max-width: 960px; padding: 0 2rem; }
-      .row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 6rem;
-        padding: 0 1rem;
+      .spacer { height: 30vh; color: #555; }
+      h1 { margin-bottom: .3rem; }
+      h2 { text-align: center; color: #9aa4b2; font-size: 1rem; letter-spacing: .04em; text-transform: uppercase; }
+      .section { margin: 55vh auto; max-width: 980px; padding: 0 2rem; }
+      .stage {
+        position: relative;
+        min-height: 260px;
+        padding: 1.5rem;
       }
       .box {
         width: 150px;
-        padding: 1.3rem;
+        padding: 1.25rem;
         border-radius: 14px;
         background: #1d6b6b;
         text-align: center;
         font-weight: 600;
       }
       .box.brown { background: #6b4a1d; }
+      .box.gray { background: #2a2f37; color: #cfd6df; }
+
+      /* layouts */
+      .row { display: flex; justify-content: space-between; align-items: center; }
+      .col { display: flex; flex-direction: column; align-items: center; gap: 9rem; }
+      .diag { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 6rem; }
+      .diag .a { grid-area: 1 / 1; justify-self: start; }
+      .diag .b { grid-area: 2 / 2; justify-self: end; }
+      /* obstacle sits dead-center on the from→to line so the curve must bend */
+      .avoid { position: relative; height: 180px; }
+      .avoid .box { position: absolute; top: 50%; transform: translateY(-50%); }
+      .avoid #o-b { left: 0; }
+      .avoid #o-a { right: 0; }
+      .avoid #o-obstacle { left: 50%; transform: translate(-50%, -50%); }
+
       .code {
         margin: 1.6rem auto 0;
-        max-width: 420px;
+        max-width: 440px;
         background: #0a0b0d;
         border: 1px solid #262a31;
         border-radius: 10px;
@@ -53,11 +68,49 @@
   <body>
     <div class="intro">
       <h1>scroll-arrows</h1>
-      <p>Scroll down — each step draws its arrow and shows the exact API call.</p>
-      <p>The <code>roughness</code> knob climbs from clean to scratchy.</p>
+      <p>Scroll down — each arrow draws itself and shows the API call that made it.</p>
     </div>
 
-    <div id="steps"></div>
+    <section class="section">
+      <h2>Roughness spectrum · horizontal</h2>
+      <div class="stage row">
+        <div class="box" id="h-a">enriched[]</div>
+        <div class="box brown" id="h-b">step 1</div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Roughness spectrum · scratchy</h2>
+      <div class="stage row">
+        <div class="box" id="h2-a">onboard[]</div>
+        <div class="box brown" id="h2-b">step 2</div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Vertical · curved</h2>
+      <div class="stage col">
+        <div class="box brown" id="v-b">source</div>
+        <div class="box" id="v-a">target</div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Diagonal · curved</h2>
+      <div class="stage diag">
+        <div class="box brown a" id="d-b">top-left</div>
+        <div class="box a-end b" id="d-a">bottom-right</div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Obstacle avoidance</h2>
+      <div class="stage avoid">
+        <div class="box brown" id="o-b">from</div>
+        <div class="box gray mid" id="o-obstacle">obstacle</div>
+        <div class="box" id="o-a">to</div>
+      </div>
+    </section>
 
     <div class="spacer">— fin —</div>
 
@@ -65,58 +118,31 @@
       import { scrollArrow } from "../src/index.ts";
 
       const PAGE_BG = "#111317";
+      const base = { stroke: "#e7e9ee", strokeWidth: 2.5, labelBackground: PAGE_BG };
 
-      // Single source of truth: each step's options drive both the arrow and
-      // the code card rendered beside it.
-      const steps = [
-        // on the line (gap mask)
-        { id: "1", a: "enriched[]", roughness: 0.0, label: "enriched[]" },
-        // nudged above the line
-        { id: "2", a: "crm[]", roughness: 0.35, label: "crm[]", labelOffset: -22 },
-        // near the start of the path
-        { id: "3", a: "gpt[]", roughness: 0.7, label: "gpt[]", labelAt: 0.25 },
-        // nudged below the line
-        { id: "4", a: "onboard[]", roughness: 1.0, label: "onboard[]", labelOffset: 22 },
+      // [opts, sectionSelector] — opts drive both the arrow and its code card.
+      const examples = [
+        [{ start: "#h-b", end: "#h-a", roughness: 0.0, label: "clean" }],
+        [{ start: "#h2-b", end: "#h2-a", roughness: 1.0, label: "scratchy" }],
+        [{ start: "#v-b", end: "#v-a", roughness: 0.4, curvature: 0.9, label: "flows", labelOffset: 26 }],
+        [{ start: "#d-b", end: "#d-a", roughness: 0.6, curvature: 0.7, label: "diagonal" }],
+        [{ start: "#o-b", end: "#o-a", roughness: 0.5, avoid: "#o-obstacle", avoidPadding: 22, label: "routes around", labelAt: 0.22 }],
       ];
 
-      const host = document.getElementById("steps");
+      examples.forEach(([opts], i) => {
+        const merged = { ...base, ...opts };
+        scrollArrow(merged);
 
-      for (const step of steps) {
-        const aId = `a${step.id}`;
-        const bId = `b${step.id}`;
-
-        const opts = {
-          start: `#${bId}`,
-          end: `#${aId}`,
-          roughness: step.roughness,
-          label: step.label,
-          ...(step.labelAt !== undefined ? { labelAt: step.labelAt } : {}),
-          ...(step.labelOffset !== undefined
-            ? { labelOffset: step.labelOffset }
-            : {}),
-          stroke: "#e7e9ee",
-          strokeWidth: 2.5,
-          labelBackground: PAGE_BG,
-        };
-
-        const el = document.createElement("div");
-        el.className = "step";
-        el.innerHTML = `
-          <div class="row">
-            <div class="box" id="${aId}">${step.a}</div>
-            <div class="box brown" id="${bId}">step ${step.id}</div>
-          </div>
-          <div class="code">${renderCall(opts)}</div>
-        `;
-        host.appendChild(el);
-
-        scrollArrow(opts);
-      }
+        const section = document.querySelectorAll(".section")[i];
+        const card = document.createElement("div");
+        card.className = "code";
+        card.innerHTML = renderCall(opts); // show the meaningful opts, not base noise
+        section.appendChild(card);
+      });
 
       // Pretty-print an options object as a highlighted scrollArrow({...}) call.
       function renderCall(opts) {
-        const esc = (s) =>
-          String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+        const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
         const lines = Object.entries(opts).map(([k, v]) => {
           let val;
           if (typeof v === "string") val = `<span class="s">"${esc(v)}"</span>`;
@@ -124,11 +150,7 @@
           else val = esc(JSON.stringify(v));
           return `  <span class="k">${k}</span>: ${val},`;
         });
-        return (
-          `<span class="fn">scrollArrow</span>({\n` +
-          lines.join("\n") +
-          `\n})`
-        );
+        return `<span class="fn">scrollArrow</span>({\n${lines.join("\n")}\n})`;
       }
     </script>
   </body>

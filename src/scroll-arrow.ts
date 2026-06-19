@@ -9,7 +9,9 @@ import {
   endTangent,
   startTangent,
   unitNormal,
+  routeOffset,
   type Endpoints,
+  type Box,
 } from "./geometry";
 import {
   scrollProgress,
@@ -126,6 +128,13 @@ export class ScrollArrow {
     return { start, end, target };
   }
 
+  private resolveAvoid(): Element[] {
+    const a = this.opts.avoid;
+    if (!a) return [];
+    const list = Array.isArray(a) ? a : [a];
+    return list.map(resolve).filter((el): el is Element => el !== null);
+  }
+
   private computeEndpoints(): Endpoints {
     const sr = docRect(this.refs.start);
     const er = docRect(this.refs.end);
@@ -155,10 +164,30 @@ export class ScrollArrow {
       this.stroke,
       this.opts.strokeWidth,
       this.seed,
+      this.opts.anchorEnds ?? true,
     );
 
-    // Line.
-    const d = buildPath(local, curvature);
+    // Route around any obstacles, then build the line.
+    const obstacles: Box[] = this.resolveAvoid().map((el) => {
+      const dr = docRect(el);
+      return {
+        left: dr.left - origin.x,
+        top: dr.top - origin.y,
+        width: dr.width,
+        height: dr.height,
+      };
+    });
+    const clear = routeOffset(
+      local.start,
+      local.end,
+      obstacles,
+      this.opts.avoidPadding ?? 14,
+    );
+    // A cubic's midpoint only reaches ~0.75x its control-point displacement, so
+    // amplify the requested clearance to make the curve actually clear the box.
+    const BOW = 1.6;
+    const belly = { x: clear.x * BOW, y: clear.y * BOW };
+    const d = buildPath(local, curvature, belly);
     this.appendDrawable(this.rc.path(d, roughOpts), "line");
 
     // Arrowheads.
@@ -286,7 +315,7 @@ export class ScrollArrow {
   }
 
   private bind(): void {
-    const targets = [this.refs.start, this.refs.end];
+    const targets = [this.refs.start, this.refs.end, ...this.resolveAvoid()];
     if (this.refs.target) targets.push(this.refs.target);
     this.ro = new ResizeObserver(() => this.render());
     targets.forEach((t) => this.ro!.observe(t));

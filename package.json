@@ -5,6 +5,19 @@
   "type": "module",
   "sideEffects": false,
   "license": "MIT",
+  "author": "Dan <dan@dorvie.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OWNER/scroll-arrows.git"
+  },
+  "homepage": "https://github.com/OWNER/scroll-arrows#readme",
+  "bugs": "https://github.com/OWNER/scroll-arrows/issues",
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "arrows",
     "hand-drawn",
@@ -41,7 +54,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run typecheck && npm run coverage && npm run build"
   },
   "dependencies": {
     "roughjs": "^4.6.6"

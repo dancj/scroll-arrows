@@ -61,6 +61,20 @@ export interface ScrollArrowOptions {
   endSocket?: Socket;
   /** Extra bow of the underlying curve, 0..1. Folded into roughness if unset. */
   curvature?: number;
+  /**
+   * Pin the stroke's endpoints to the anchor sockets so the arrow always lands
+   * on its targets, even at high roughness. Set false to let the scratchy ends
+   * wander off the anchors. Default true.
+   */
+  anchorEnds?: boolean;
+
+  /**
+   * Element(s) the arrow should bend around instead of crossing. Single-bend
+   * routing — picks the worst blocker and bows the curve clear of it.
+   */
+  avoid?: ElementRef | ElementRef[];
+  /** Gap to keep between the curve and avoided boxes, px. Default 14. */
+  avoidPadding?: number;
 
   /** Which ends get an arrowhead. Default "end". */
   head?: ArrowHead;
