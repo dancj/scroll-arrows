@@ -1,0 +1,67 @@
+{
+  "name": "scroll-arrows",
+  "version": "0.1.0",
+  "description": "Hand-drawn arrows that draw themselves between two elements as you scroll. Roughness goes from clean straight lines to scratchy and curvy.",
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "keywords": [
+    "arrows",
+    "hand-drawn",
+    "sketchy",
+    "rough",
+    "scroll",
+    "scrollytelling",
+    "svg",
+    "animation",
+    "excalidraw"
+  ],
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js",
+      "require": "./dist/react.cjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "demo": "vite demo",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "roughjs": "^4.6.6"
+  },
+  "peerDependencies": {
+    "react": ">=17"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@vitest/coverage-v8": "^2.1.0",
+    "jsdom": "^25.0.0",
+    "react": "^18.3.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vite": "^5.0.0",
+    "vitest": "^2.1.0"
+  }
+}
