@@ -1,5 +1,10 @@
 # scroll-arrows
 
+[![CI](https://github.com/dancj/scroll-arrows/actions/workflows/ci.yml/badge.svg)](https://github.com/dancj/scroll-arrows/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/scroll-arrows.svg)](https://www.npmjs.com/package/scroll-arrows)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/scroll-arrows)](https://bundlephobia.com/package/scroll-arrows)
+[![license](https://img.shields.io/npm/l/scroll-arrows.svg)](./LICENSE)
+
 Hand-drawn arrows that **draw themselves between two elements as you scroll**.
 A single `roughness` knob slides from clean straight lines (0) to scratchy,
 curvy scribbles (1) — same sketchy engine as Excalidraw ([rough.js]).

@@ -8,10 +8,10 @@
   "author": "Dan <dan@dorvie.com>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OWNER/scroll-arrows.git"
+    "url": "git+https://github.com/dancj/scroll-arrows.git"
   },
-  "homepage": "https://github.com/OWNER/scroll-arrows#readme",
-  "bugs": "https://github.com/OWNER/scroll-arrows/issues",
+  "homepage": "https://github.com/dancj/scroll-arrows#readme",
+  "bugs": "https://github.com/dancj/scroll-arrows/issues",
   "engines": {
     "node": ">=18"
   },
@@ -30,7 +30,10 @@
     "excalidraw"
   ],
   "files": [
-    "dist"
+    "dist/**/*.js",
+    "dist/**/*.cjs",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.cts"
   ],
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
