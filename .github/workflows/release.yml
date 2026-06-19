@@ -10,19 +10,21 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # npm provenance
+      id-token: write # OIDC trusted publishing + provenance
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22 # trusted publishing needs Node >= 22.14.0
           cache: npm
           registry-url: "https://registry.npmjs.org"
+      # Trusted publishing (OIDC) needs npm >= 11.5.1; Node 22 ships npm 10.x.
+      - run: npm install -g npm@latest
       - run: npm ci
       # Pin the published version to the tag, so it matches regardless of what
       # package.json on the tagged commit happens to say.
       - run: npm pkg set version="${GITHUB_REF_NAME#v}"
-      # prepublishOnly runs typecheck + coverage + build before publishing
+      # No NODE_AUTH_TOKEN: auth is the OIDC exchange. prepublishOnly runs
+      # typecheck + coverage + build before publishing. Provenance is automatic
+      # under trusted publishing but kept explicit for clarity.
       - run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
