@@ -19,6 +19,9 @@ jobs:
           cache: npm
           registry-url: "https://registry.npmjs.org"
       - run: npm ci
+      # Pin the published version to the tag, so it matches regardless of what
+      # package.json on the tagged commit happens to say.
+      - run: npm pkg set version="${GITHUB_REF_NAME#v}"
       # prepublishOnly runs typecheck + coverage + build before publishing
       - run: npm publish --provenance --access public
         env:

@@ -118,9 +118,29 @@ Key options: `start`, `end`, `container`, `roughness`, `stroke`, `strokeWidth`,
 
 ```bash
 npm run demo       # vite playground at /demo
-npm test           # vitest
+npm test           # vitest (library + release tooling)
 npm run coverage   # vitest + v8 coverage (pure logic gated at 90%)
 npm run build      # tsup → dist (ESM + CJS + d.ts)
 ```
+
+## Releasing
+
+Automated **staging → main** flow (semver, derived from conventional-commit PR
+titles):
+
+1. Feature PRs merge into `staging`.
+2. `auto-release-pr.yml` keeps a single **"Release: staging to main"** PR open,
+   its body a categorized summary (Features / Fixes / Docs / Maintenance) plus
+   the proposed next version (`feat:` → minor, `fix:`/other → patch, `!` or
+   `BREAKING CHANGE` → major).
+3. Merging that PR to `main` triggers `release-changelog.yml`: it computes the
+   version from the newest `v*` tag, bumps `package.json` + prepends a
+   `CHANGELOG.md` entry on a `release-<version>` branch, tags `v<version>`, and
+   opens a sync PR back to `staging`.
+4. The pushed `v*` tag triggers `release.yml`, publishing to npm with
+   provenance (version pinned to the tag).
+
+Release logic lives in `scripts/*.mjs` (pure helpers + injectable-deps
+orchestrators), unit-tested under vitest. Requires the `NPM_TOKEN` repo secret.
 
 [rough.js]: https://roughjs.com
