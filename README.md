@@ -137,10 +137,19 @@ titles):
    version from the newest `v*` tag, bumps `package.json` + prepends a
    `CHANGELOG.md` entry on a `release-<version>` branch, tags `v<version>`, and
    opens a sync PR back to `staging`.
-4. The pushed `v*` tag triggers `release.yml`, publishing to npm with
-   provenance (version pinned to the tag).
+4. The pushed `v*` tag triggers `release.yml`, publishing to npm via
+   **trusted publishing (OIDC)** with provenance (version pinned to the tag).
 
 Release logic lives in `scripts/*.mjs` (pure helpers + injectable-deps
-orchestrators), unit-tested under vitest. Requires the `NPM_TOKEN` repo secret.
+orchestrators), unit-tested under vitest.
+
+Publishing uses OIDC — no `NPM_TOKEN` secret. One-time bootstrap (npm requires
+the package to exist before a trusted publisher can be configured):
+
+1. `npm login` then `npm publish --access public` once from your machine.
+2. On npmjs.com → the package → Settings → **Trusted Publishing**, add the
+   GitHub Actions publisher (`dancj/scroll-arrows`, workflow `release.yml`).
+
+After that, every `v*` tag publishes from CI with no stored credentials.
 
 [rough.js]: https://roughjs.com
