@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/dancj/scroll-arrows/actions/workflows/ci.yml/badge.svg)](https://github.com/dancj/scroll-arrows/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/scroll-arrows.svg)](https://www.npmjs.com/package/scroll-arrows)
-[![bundle size](https://img.shields.io/bundlephobia/minzip/scroll-arrows)](https://bundlephobia.com/package/scroll-arrows)
-[![license](https://img.shields.io/npm/l/scroll-arrows.svg)](./LICENSE)
+[![bundle size](https://img.shields.io/bundlejs/size/scroll-arrows)](https://bundlejs.com/?q=scroll-arrows)
+[![license](https://img.shields.io/github/license/dancj/scroll-arrows.svg)](./LICENSE)
 
 Hand-drawn arrows that **draw themselves between two elements as you scroll**.
 A single `roughness` knob slides from clean straight lines (0) to scratchy,
@@ -20,15 +20,15 @@ npm install scroll-arrows
 ## Vanilla
 
 ```ts
-import { scrollArrow } from "scroll-arrows";
+import { scrollArrow } from 'scroll-arrows';
 
 const arrow = scrollArrow({
-  start: "#box-a",     // Element or CSS selector
-  end: "#box-b",
-  roughness: 0.7,      // 0 clean → 1 scratchy
-  stroke: "#e7e9ee",
+  start: '#box-a', // Element or CSS selector
+  end: '#box-b',
+  roughness: 0.7, // 0 clean → 1 scratchy
+  stroke: '#e7e9ee',
   strokeWidth: 2.5,
-  head: "end",         // "start" | "end" | "both" | "none"
+  head: 'end', // "start" | "end" | "both" | "none"
 });
 
 // later
@@ -61,8 +61,8 @@ arrow.destroy();
 ## React
 
 ```tsx
-import { useRef } from "react";
-import { ScrollArrowLine } from "scroll-arrows/react";
+import { useRef } from 'react';
+import { ScrollArrowLine } from 'scroll-arrows/react';
 
 function Diagram() {
   const a = useRef<HTMLDivElement>(null);

@@ -1,4 +1,4 @@
-export { ScrollArrow } from "./scroll-arrow";
+export { ScrollArrow } from './scroll-arrow';
 export type {
   ScrollArrowOptions,
   ScrollOptions,
@@ -6,11 +6,11 @@ export type {
   ArrowHead,
   ElementRef,
   Point,
-} from "./types";
-export { easeInOutCubic } from "./progress";
+} from './types';
+export { easeInOutCubic } from './progress';
 
-import { ScrollArrow } from "./scroll-arrow";
-import type { ScrollArrowOptions } from "./types";
+import { ScrollArrow } from './scroll-arrow';
+import type { ScrollArrowOptions } from './types';
 
 /** Convenience factory. `const a = scrollArrow({ start, end })`. */
 export function scrollArrow(options: ScrollArrowOptions): ScrollArrow {

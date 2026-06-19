@@ -1,6 +1,6 @@
-import { clamp01 } from "./progress";
+import { clamp01 } from './progress';
 
-export type SegmentKind = "line" | "head";
+export type SegmentKind = 'line' | 'head';
 
 export interface DrawSegment {
   len: number;
@@ -19,7 +19,7 @@ function lengths(segs: DrawSegment[]): { lineLen: number; headLen: number } {
   let lineLen = 0;
   let headLen = 0;
   for (const s of segs) {
-    if (s.kind === "line") lineLen = Math.max(lineLen, s.len);
+    if (s.kind === 'line') lineLen = Math.max(lineLen, s.len);
     else headLen += s.len;
   }
   return { lineLen, headLen };
@@ -34,7 +34,7 @@ export function dashOffsets(segs: DrawSegment[], eased: number): number[] {
   let headDrawn = Math.max(0, drawn - lineLen);
 
   return segs.map((seg) => {
-    if (seg.kind === "line") return seg.len * (1 - lp);
+    if (seg.kind === 'line') return seg.len * (1 - lp);
     const show = Math.max(0, Math.min(seg.len, headDrawn));
     headDrawn -= seg.len;
     return seg.len - show;

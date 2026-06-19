@@ -1,4 +1,4 @@
-import type { Options as RoughOptions } from "roughjs/bin/core";
+import type { Options as RoughOptions } from 'roughjs/bin/core';
 
 /**
  * Map the single normalized `roughness` knob (0 clean .. 1 scratchy) onto the
@@ -27,7 +27,7 @@ export function mapRoughness(
       stroke,
       strokeWidth,
       seed: seed | 0,
-      fill: "none",
+      fill: 'none',
     },
   };
 }
@@ -35,7 +35,7 @@ export function mapRoughness(
 /** Stable-ish seed from the two element references so scribbles don't reshuffle. */
 export function deriveSeed(a: string, b: string): number {
   let h = 2166136261;
-  const s = a + "->" + b;
+  const s = a + '->' + b;
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i);
     h = Math.imul(h, 16777619);
