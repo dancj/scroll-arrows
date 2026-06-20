@@ -1,11 +1,11 @@
 {
   "name": "scroll-arrows",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Hand-drawn arrows that draw themselves between two elements as you scroll. Roughness goes from clean straight lines to scratchy and curvy.",
   "type": "module",
   "sideEffects": false,
   "license": "MIT",
-  "author": "Dan <dan@dorvie.com>",
+  "author": "Dan (https://github.com/dancj)",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dancj/scroll-arrows.git"
@@ -54,6 +54,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "demo": "vite demo",
+    "gen:hero": "node scripts/genHeroSvg.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
