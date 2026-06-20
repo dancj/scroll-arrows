@@ -36,7 +36,10 @@ export function injectChangelogEntry(existingChangelog, entry) {
 
   const before = existingChangelog.slice(0, cursor);
   const after = existingChangelog.slice(cursor);
-  return before + entry + (entry.endsWith('\n') ? '' : '\n') + after;
+  // Separate the entry from the following section with exactly one blank line so
+  // the result stays Prettier-clean (prettier --check gates CI).
+  const normalized = entry.replace(/\n+$/, '');
+  return before + normalized + '\n\n' + after;
 }
 
 function formatIsoDate(date) {
