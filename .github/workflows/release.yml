@@ -1,9 +1,20 @@
 name: Release
 
 on:
+  # Manual tag pushes (from a human's own credentials) still publish directly.
   push:
     tags:
       - 'v*'
+  # Automated path: release-changelog.yml dispatches this with the tag as input.
+  # workflow_dispatch is the one event GITHUB_TOKEN may trigger, so the pipeline
+  # needs no stored PAT; the bare tag push it does (under GITHUB_TOKEN) cannot
+  # trigger on:push.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to publish (e.g. v1.2.3)'
+        required: true
+        type: string
 
 jobs:
   publish:
@@ -11,8 +22,15 @@ jobs:
     permissions:
       contents: read
       id-token: write # OIDC trusted publishing + provenance
+    env:
+      # Resolved release tag: the dispatch input when present, else the pushed
+      # tag ref. Both publish paths read this single value.
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Build the tagged commit, not whatever HEAD the dispatch ran against.
+          ref: ${{ env.RELEASE_TAG }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24 # Active LTS; satisfies trusted publishing (Node >= 22.14.0)
@@ -22,7 +40,7 @@ jobs:
       - run: npm ci
       # Pin the published version to the tag, so it matches regardless of what
       # package.json on the tagged commit happens to say.
-      - run: npm pkg set version="${GITHUB_REF_NAME#v}"
+      - run: npm pkg set version="${RELEASE_TAG#v}"
       # No NODE_AUTH_TOKEN: auth is the OIDC exchange. prepublishOnly runs
       # typecheck + coverage + build before publishing. Provenance is automatic
       # under trusted publishing but kept explicit for clarity.
