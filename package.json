@@ -54,6 +54,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "demo": "vite demo",
+    "gen:hero": "node scripts/genHeroSvg.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
