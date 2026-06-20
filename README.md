@@ -144,8 +144,12 @@ titles):
    version from the newest `v*` tag, bumps `package.json` + prepends a
    `CHANGELOG.md` entry on a `release-<version>` branch, tags `v<version>`, and
    opens a sync PR back to `staging`.
-4. The pushed `v*` tag triggers `release.yml`, publishing to npm via
-   **trusted publishing (OIDC)** with provenance (version pinned to the tag).
+4. `release-changelog.yml` then dispatches `release.yml` via `workflow_dispatch`
+   (a tag pushed under `GITHUB_TOKEN` cannot trigger `on: push: tags` — GitHub's
+   anti-recursion guard), passing the tag. `release.yml` publishes to npm via
+   **trusted publishing (OIDC)** with provenance (version pinned to the tag). A
+   `v*` tag pushed manually with your own credentials also triggers `release.yml`
+   directly via `on: push: tags`.
 
 Release logic lives in `scripts/*.mjs` (pure helpers + injectable-deps
 orchestrators), unit-tested under vitest.
