@@ -5,7 +5,7 @@
   "type": "module",
   "sideEffects": false,
   "license": "MIT",
-  "author": "Dan <dan@dorvie.com>",
+  "author": "Dan (https://github.com/dancj)",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dancj/scroll-arrows.git"
