@@ -87,18 +87,21 @@ describe('releaseChangelogRun', () => {
     expect(log.some((k) => k.includes('push origin v0.2.0'))).toBe(true);
     expect(log.some((k) => k.includes('checkout -b release-0.2.0'))).toBe(true);
 
-    // Dispatches release.yml with the computed tag (the publish trigger).
-    const dispatch = log.find(
-      (k) =>
-        k.includes('gh workflow run release.yml') && k.includes('tag=v0.2.0'),
+    // Dispatches release.yml exactly once, against the tag ref, with the tag input.
+    const dispatches = log.filter((k) =>
+      k.includes('gh workflow run release.yml'),
     );
-    expect(dispatch).toBeTruthy();
-    // Dispatch must happen after the tag is pushed.
+    expect(dispatches).toHaveLength(1);
+    expect(dispatches[0]).toContain('--ref v0.2.0');
+    expect(dispatches[0]).toContain('tag=v0.2.0');
+    // Dispatch must happen after the tag push and before the sync PR is opened.
     const pushIdx = log.findIndex((k) => k.includes('push origin v0.2.0'));
     const dispatchIdx = log.findIndex((k) =>
       k.includes('gh workflow run release.yml'),
     );
+    const createIdx = log.findIndex((k) => k.includes('gh pr create'));
     expect(dispatchIdx).toBeGreaterThan(pushIdx);
+    expect(dispatchIdx).toBeLessThan(createIdx);
   });
 
   it('does not dispatch publish when HEAD is not a merge commit', async () => {

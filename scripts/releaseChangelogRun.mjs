@@ -146,7 +146,26 @@ export async function releaseChangelogRun({
   // explicit workflow_dispatch is the one event GITHUB_TOKEN may trigger, so
   // this is what actually publishes (no PAT needed). Dispatched against the tag
   // ref with the tag as input; release.yml resolves checkout + version from it.
-  await gh('workflow', 'run', 'release.yml', '--ref', tag, '-f', `tag=${tag}`);
+  //
+  // If this throws, the tag is already pushed but unpublished, and a re-run
+  // early-exits at step 3 (tag-exists) without re-dispatching — so surface the
+  // exact manual recovery command rather than a bare stack trace.
+  try {
+    await gh(
+      'workflow',
+      'run',
+      'release.yml',
+      '--ref',
+      tag,
+      '-f',
+      `tag=${tag}`,
+    );
+  } catch (e) {
+    throw new Error(
+      `Tag ${tag} was pushed but dispatching release.yml failed: ${e.message ?? e}. ` +
+        `Recover by re-dispatching manually: gh workflow run release.yml --ref ${tag} -f tag=${tag}`,
+    );
+  }
 
   // Step 6: open sync PR back to staging (no auto-merge).
   const prBody = renderSyncPrBody({ version, prs });
