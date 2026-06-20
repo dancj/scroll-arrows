@@ -55,7 +55,7 @@ describe('releaseChangelogRun', () => {
     expect(res).toEqual({ skipped: true, reason: 'not-a-merge-commit' });
   });
 
-  it('tags, bumps files, and opens a sync PR on the happy path', async () => {
+  it('tags, bumps files, opens a sync PR, and dispatches publish on the happy path', async () => {
     const log = [];
     const exec = makeExec(
       [
@@ -64,7 +64,9 @@ describe('releaseChangelogRun', () => {
       ],
       log,
     );
+    // Record gh calls into the same log so cross-tool ordering is assertable.
     const gh = async (...a) => {
+      log.push(['gh', ...a].join(' '));
       if (a[1] === 'list') return { stdout: STAGING_PRS };
       if (a[1] === 'create')
         return { stdout: 'https://github.com/o/r/pull/77' };
@@ -84,5 +86,32 @@ describe('releaseChangelogRun', () => {
     expect(log.some((k) => k.includes('tag v0.2.0'))).toBe(true);
     expect(log.some((k) => k.includes('push origin v0.2.0'))).toBe(true);
     expect(log.some((k) => k.includes('checkout -b release-0.2.0'))).toBe(true);
+
+    // Dispatches release.yml with the computed tag (the publish trigger).
+    const dispatch = log.find(
+      (k) =>
+        k.includes('gh workflow run release.yml') && k.includes('tag=v0.2.0'),
+    );
+    expect(dispatch).toBeTruthy();
+    // Dispatch must happen after the tag is pushed.
+    const pushIdx = log.findIndex((k) => k.includes('push origin v0.2.0'));
+    const dispatchIdx = log.findIndex((k) =>
+      k.includes('gh workflow run release.yml'),
+    );
+    expect(dispatchIdx).toBeGreaterThan(pushIdx);
+  });
+
+  it('does not dispatch publish when HEAD is not a merge commit', async () => {
+    const ghCalls = [];
+    const exec = makeExec([['log -1 --format=%P', 'abc123']]); // single parent
+    const gh = async (...a) => {
+      ghCalls.push(['gh', ...a].join(' '));
+      return { stdout: '' };
+    };
+    const fs = makeFs({ 'package.json': PKG, 'CHANGELOG.md': CHANGELOG });
+    const res = await releaseChangelogRun({ gh, exec, now, ...fs });
+
+    expect(res).toEqual({ skipped: true, reason: 'not-a-merge-commit' });
+    expect(ghCalls.some((k) => k.includes('workflow run'))).toBe(false);
   });
 });

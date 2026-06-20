@@ -3,14 +3,15 @@
 // "Release: staging to main" PR merges. Composes the pure helpers with gh and
 // git into an injectable-deps function.
 //
-// Step order (the pushed tag is the publish trigger — failures before it leave
-// no side effects; the tagged commit carries the bumped package.json so the
-// v*-triggered publish workflow ships the right version):
+// Step order (the tagged commit carries the bumped package.json; the explicit
+// workflow_dispatch in step 5b is the publish trigger — a tag pushed under
+// GITHUB_TOKEN cannot trigger release.yml's on:push:tags, so we dispatch it):
 //   1. Ancestry guard (skip if HEAD isn't a merge commit)
 //   2. Compute next semver from the newest v* tag + merged PRs
 //   3. Idempotent early-exit if tag v<version> already exists
 //   4. Create release branch from HEAD; bump package.json + CHANGELOG; commit
-//   5. Push the branch, then tag that commit and push the tag (-> publish)
+//   5. Push the branch, then tag that commit and push the tag
+//   5b. Dispatch release.yml (workflow_dispatch) to publish the tag
 //   6. Open a sync PR back to staging (human merges — never auto-merge)
 //
 // All subprocess calls use execFile with explicit argv arrays.
@@ -134,11 +135,18 @@ export async function releaseChangelogRun({
   await exec('git', ['add', pkgPath, changelogPath]);
   await exec('git', ['commit', '-m', `chore: release v${version}`]);
 
-  // Step 5: push branch, then tag the commit and push the tag (triggers
-  // release.yml, which publishes the tagged commit's package.json to npm).
+  // Step 5: push branch, then tag the commit and push the tag.
   await exec('git', ['push', '-u', 'origin', branch]);
   await exec('git', ['tag', tag]);
   await exec('git', ['push', 'origin', tag]);
+
+  // Step 5b: dispatch the publish workflow. The tag push above runs under
+  // GITHUB_TOKEN, and GitHub does NOT re-trigger workflows for refs pushed by
+  // GITHUB_TOKEN — so release.yml's on:push:tags never fires from here. An
+  // explicit workflow_dispatch is the one event GITHUB_TOKEN may trigger, so
+  // this is what actually publishes (no PAT needed). Dispatched against the tag
+  // ref with the tag as input; release.yml resolves checkout + version from it.
+  await gh('workflow', 'run', 'release.yml', '--ref', tag, '-f', `tag=${tag}`);
 
   // Step 6: open sync PR back to staging (no auto-merge).
   const prBody = renderSyncPrBody({ version, prs });
