@@ -5,6 +5,13 @@
 [![bundle size](https://img.shields.io/bundlejs/size/scroll-arrows)](https://bundlejs.com/?q=scroll-arrows)
 [![license](https://img.shields.io/github/license/dancj/scroll-arrows.svg)](./LICENSE)
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./assets/hero-arrow-dark.svg" />
+    <img alt="A hand-drawn arrow drawing itself" src="./assets/hero-arrow-light.svg" width="640" />
+  </picture>
+</p>
+
 Hand-drawn arrows that **draw themselves between two elements as you scroll**.
 A single `roughness` knob slides from clean straight lines (0) to scratchy,
 curvy scribbles (1) — same sketchy engine as Excalidraw ([rough.js]).
