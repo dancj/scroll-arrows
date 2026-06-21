@@ -151,6 +151,33 @@
         padding: 0 0.3rem;
         border-radius: 4px;
       }
+
+      /* tab reveal demo */
+      .tabs {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+      }
+      .tabs button {
+        background: #2a2f37;
+        color: #cfd6df;
+        border: 1px solid #3a414b;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font: inherit;
+        cursor: pointer;
+      }
+      .tabs button[aria-selected='true'] {
+        background: #1d6b6b;
+        color: #fff;
+      }
+      .panel[hidden] {
+        display: none;
+      }
+      .panel .row {
+        justify-content: space-around;
+      }
     </style>
   </head>
   <body>
@@ -233,6 +260,32 @@
         motion on, this arrow renders fully drawn and static instead of
         animating on scroll. Opt out with
         <code>respectReducedMotion: false</code>.
+      </p>
+    </section>
+
+    <section class="section">
+      <h2>Hidden anchor · tab reveal</h2>
+      <div class="tabs">
+        <button id="tab-1" aria-selected="true" data-panel="panel-1">
+          Tab 1
+        </button>
+        <button id="tab-2" aria-selected="false" data-panel="panel-2">
+          Tab 2
+        </button>
+      </div>
+      <div class="stage">
+        <div class="panel row" id="panel-1">
+          <div class="box" id="hidden-a">always visible</div>
+        </div>
+        <!-- The arrow's end anchor lives in this initially-hidden panel. -->
+        <div class="panel row" id="panel-2" hidden>
+          <div class="box brown" id="hidden-b">revealed on Tab 2</div>
+        </div>
+      </div>
+      <p style="text-align: center; color: #9aa4b2">
+        Switch to Tab 2 — the arrow’s target starts in a
+        <code>hidden</code> panel, so nothing draws until reveal, then
+        <code>refresh()</code> snaps it into place.
       </p>
     </section>
 
@@ -346,6 +399,33 @@
           `})`
         );
       }
+
+      // Hidden-anchor demo: the arrow targets an element in an initially
+      // hidden tab panel. It draws nothing until revealed, then refresh()
+      // recomputes the geometry once the anchor has a real box.
+      const tabArrow = scrollArrow({
+        ...base,
+        start: '#hidden-a',
+        end: '#hidden-b',
+        roughness: 0.5,
+        scroll: false,
+        progress: 1,
+        label: 'refresh()',
+      });
+      const panels = {
+        'tab-1': 'panel-1',
+        'tab-2': 'panel-2',
+      };
+      document.querySelectorAll('.tabs button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tabs button').forEach((b) => {
+            const active = b === btn;
+            b.setAttribute('aria-selected', String(active));
+            document.getElementById(panels[b.id]).hidden = !active;
+          });
+          tabArrow.refresh(); // anchor now has a box — recompute and draw
+        });
+      });
 
       // Pretty-print an options object as a highlighted scrollArrow({...}) call.
       function renderCall(opts) {
