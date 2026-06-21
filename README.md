@@ -62,6 +62,11 @@ arrow.destroy();
   `startSocketOffset` / `endSocketOffset` (a fraction of the edge length, `0` =
   centered, `±0.5` = corners) to spread them — e.g. `-0.25`, `0`, `+0.25` for
   three siblings off one parent.
+- **Elbow routing** — set `route: 'elbow'` for right-angle connectors (the
+  classic tree / org-chart bracket) instead of a smooth curve. Same-axis sockets
+  get a centered Z-bracket, perpendicular sockets a single L-corner. Pair with
+  explicit `startSocket` / `endSocket` for predictable shapes. Elbow mode ignores
+  `avoid` and `curvature`.
 - **Hidden anchors (tabs / accordions)** — an anchor inside a `display:none`
   container has no box, so the arrow can't be drawn yet. Instead of rendering a
   collapsed/garbage line, it draws nothing and **auto-redraws the moment the
@@ -228,9 +233,9 @@ the runtime arrow mounts in its own overlay and won't clash with your static one
 
 Key options: `start`, `end`, `container`, `roughness`, `stroke`, `strokeWidth`,
 `seed`, `startSocket`, `endSocket`, `startSocketOffset`, `endSocketOffset`,
-`curvature`, `head`, `headSize`, `scroll`, `speed`, `easing`, `progress`,
-`enabled`. Full types ship with the package. `setEnabled(on)` toggles an arrow
-(and a group) on/off without teardown.
+`curvature`, `route`, `head`, `headSize`, `scroll`, `speed`, `easing`,
+`progress`, `enabled`. Full types ship with the package. `setEnabled(on)` toggles
+an arrow (and a group) on/off without teardown.
 
 ## Develop
 

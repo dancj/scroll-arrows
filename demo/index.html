@@ -289,6 +289,18 @@
       </p>
     </section>
 
+    <section class="section" id="elbow-demo">
+      <h2>Elbow routing · org chart</h2>
+      <div class="stage tree">
+        <div class="box brown" id="e-root">CEO</div>
+        <div class="kids">
+          <div class="box" id="e-a">eng</div>
+          <div class="box" id="e-b">design</div>
+          <div class="box" id="e-c">ops</div>
+        </div>
+      </div>
+    </section>
+
     <div class="spacer">— fin —</div>
 
     <script type="module">
@@ -385,6 +397,38 @@
       rmCard.className = 'code';
       rmCard.innerHTML = renderCall(rmOpts);
       rmSection.appendChild(rmCard);
+
+      // Elbow routing: right-angle org-chart brackets off one shared trigger.
+      // Forced bottom/top sockets keep every connector a clean vertical bracket.
+      const elbowArrows = [
+        { start: '#e-root', end: '#e-a' },
+        { start: '#e-root', end: '#e-b' },
+        { start: '#e-root', end: '#e-c' },
+      ];
+      scrollArrowGroup({
+        ...base,
+        arrows: elbowArrows.map((a) => ({
+          ...base,
+          ...a,
+          route: 'elbow',
+          startSocket: 'bottom',
+          endSocket: 'top',
+          roughness: 0.5,
+        })),
+        stagger: 1,
+        scroll: { target: '#elbow-demo' },
+      });
+
+      const elbowSection = document.getElementById('elbow-demo');
+      const elbowCard = document.createElement('div');
+      elbowCard.className = 'code';
+      elbowCard.innerHTML =
+        `<span class="fn">scrollArrowGroup</span>({\n` +
+        `  <span class="k">arrows</span>: [ <span class="s">"#e-root"</span> → A, B, C ],\n` +
+        `  <span class="k">route</span>: <span class="s">"elbow"</span>,\n` +
+        `  <span class="k">startSocket</span>: <span class="s">"bottom"</span>, <span class="k">endSocket</span>: <span class="s">"top"</span>,\n` +
+        `})`;
+      elbowSection.appendChild(elbowCard);
 
       function renderGroupCall() {
         const arrows = groupArrows

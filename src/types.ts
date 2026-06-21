@@ -5,6 +5,13 @@ export type Socket = 'auto' | 'top' | 'bottom' | 'left' | 'right' | 'center';
 
 export type ArrowHead = 'start' | 'end' | 'both' | 'none';
 
+/**
+ * Line routing style. `curved` (default) is the smooth bezier with single-bend
+ * obstacle avoidance. `elbow` draws right-angle connectors (tree/org-chart
+ * brackets); `elbow` ignores `avoid`/`curvature`.
+ */
+export type Route = 'curved' | 'elbow';
+
 /** Anything we can resolve to a live DOM element. */
 export type ElementRef = Element | string;
 
@@ -64,6 +71,13 @@ export interface ScrollArrowOptions {
   endSocketOffset?: number;
   /** Extra bow of the underlying curve, 0..1. Folded into roughness if unset. */
   curvature?: number;
+  /**
+   * Routing style. `"curved"` (default) is the smooth bezier with obstacle
+   * avoidance; `"elbow"` draws right-angle connectors for tree/org-chart
+   * diagrams. Elbow mode ignores `avoid` and `curvature`. Pair with explicit
+   * `startSocket`/`endSocket` for predictable bracket shapes.
+   */
+  route?: Route;
   /**
    * Pin the stroke's endpoints to the anchor sockets so the arrow always lands
    * on its targets, even at high roughness. Set false to let the scratchy ends

@@ -6,6 +6,7 @@ import {
   isDegenerateRect,
   resolveEndpoints,
   buildPath,
+  buildElbowPath,
   arrowHeadPath,
   endTangent,
   startTangent,
@@ -234,27 +235,33 @@ export class ScrollArrow {
       this.opts.anchorEnds ?? true,
     );
 
-    // Route around any obstacles, then build the line.
-    const obstacles: Box[] = this.resolveAvoid().map((el) => {
-      const dr = docRect(el);
-      return {
-        left: dr.left - origin.x,
-        top: dr.top - origin.y,
-        width: dr.width,
-        height: dr.height,
-      };
-    });
-    const clear = routeOffset(
-      local.start,
-      local.end,
-      obstacles,
-      this.opts.avoidPadding ?? 14,
-    );
-    // A cubic's midpoint only reaches ~0.75x its control-point displacement, so
-    // amplify the requested clearance to make the curve actually clear the box.
-    const BOW = 1.6;
-    const belly = { x: clear.x * BOW, y: clear.y * BOW };
-    const d = buildPath(local, curvature, belly);
+    let d: string;
+    if (this.opts.route === 'elbow') {
+      // Orthogonal connector: ignores obstacle avoidance and curvature.
+      d = buildElbowPath(local);
+    } else {
+      // Route around any obstacles, then build the curve.
+      const obstacles: Box[] = this.resolveAvoid().map((el) => {
+        const dr = docRect(el);
+        return {
+          left: dr.left - origin.x,
+          top: dr.top - origin.y,
+          width: dr.width,
+          height: dr.height,
+        };
+      });
+      const clear = routeOffset(
+        local.start,
+        local.end,
+        obstacles,
+        this.opts.avoidPadding ?? 14,
+      );
+      // A cubic's midpoint only reaches ~0.75x its control-point displacement,
+      // so amplify the requested clearance to make the curve clear the box.
+      const BOW = 1.6;
+      const belly = { x: clear.x * BOW, y: clear.y * BOW };
+      d = buildPath(local, curvature, belly);
+    }
     this.appendDrawable(this.rc.path(d, roughOpts), 'line');
 
     // Arrowheads.
