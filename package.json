@@ -1,6 +1,6 @@
 {
   "name": "scroll-arrows",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Hand-drawn arrows that draw themselves between two elements as you scroll. Roughness goes from clean straight lines to scratchy and curvy.",
   "type": "module",
   "sideEffects": false,
@@ -54,6 +54,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "demo": "vite demo",
+    "demo:build": "vite build demo --base=/scroll-arrows/ --outDir dist-demo --emptyOutDir",
     "gen:hero": "node scripts/genHeroSvg.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",

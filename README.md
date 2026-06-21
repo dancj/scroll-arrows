@@ -20,6 +20,8 @@ Framework-agnostic core + a thin React wrapper. Arrows live in a click-through
 overlay `<svg>`, auto-track their endpoints with `ResizeObserver`, and draw on
 scroll progress.
 
+**[▶ Live demo](https://dancj.github.io/scroll-arrows/)**
+
 ```bash
 npm install scroll-arrows
 ```
