@@ -314,8 +314,24 @@
 
       // [opts, sectionSelector] — opts drive both the arrow and its code card.
       const examples = [
-        [{ start: '#h-b', end: '#h-a', roughness: 0.0, label: 'clean' }],
-        [{ start: '#h2-b', end: '#h2-a', roughness: 1.0, label: 'scratchy' }],
+        [
+          {
+            start: '#h-b',
+            end: '#h-a',
+            roughness: 0.0,
+            label: 'clean',
+            labelAt: 'start',
+          },
+        ],
+        [
+          {
+            start: '#h2-b',
+            end: '#h2-a',
+            roughness: 1.0,
+            label: 'scratchy',
+            labelAt: 'end',
+          },
+        ],
         [
           {
             start: '#v-b',
@@ -333,7 +349,7 @@
             roughness: 0.6,
             curvature: 0.7,
             label: 'diagonal',
-            labelAt: 'end',
+            labelAt: '75%',
           },
         ],
         [
