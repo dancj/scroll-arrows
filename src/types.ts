@@ -111,6 +111,14 @@ export interface ScrollArrowOptions {
 
   /** Start fully drawn instead of empty. Useful with `scroll:false`. Default 0. */
   progress?: number;
+
+  /**
+   * Auto-respect `prefers-reduced-motion: reduce`. When the user prefers reduced
+   * motion, the arrow renders fully drawn and static (no scroll animation),
+   * while still tracking layout. Set false to keep the scroll animation
+   * regardless of the OS setting. Default true. Evaluated once at construction.
+   */
+  respectReducedMotion?: boolean;
 }
 
 /**
@@ -141,4 +149,11 @@ export interface ScrollArrowGroupOptions {
   speed?: number;
   /** Easing applied to the group's overall progress before slicing. Default linear. */
   easing?: (t: number) => number;
+  /**
+   * Auto-respect `prefers-reduced-motion: reduce` for the whole group. When the
+   * user prefers reduced motion, every arrow renders fully drawn and static (no
+   * scroll animation). Set false to keep the staggered scroll reveal regardless
+   * of the OS setting. Default true. Evaluated once at construction.
+   */
+  respectReducedMotion?: boolean;
 }

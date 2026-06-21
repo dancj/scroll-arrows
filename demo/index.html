@@ -215,6 +215,27 @@
       </div>
     </section>
 
+    <section class="section">
+      <h2>Reduced motion · static fallback</h2>
+      <div class="stage row">
+        <div class="box" id="rm-a">a11y[]</div>
+        <div class="box brown" id="rm-b">drawn</div>
+      </div>
+      <p
+        style="
+          text-align: center;
+          color: #9aa4b2;
+          max-width: 440px;
+          margin: 1rem auto 0;
+        "
+      >
+        Auto-respects <code>prefers-reduced-motion: reduce</code>. With reduced
+        motion on, this arrow renders fully drawn and static instead of
+        animating on scroll. Opt out with
+        <code>respectReducedMotion: false</code>.
+      </p>
+    </section>
+
     <div class="spacer">— fin —</div>
 
     <script type="module">
@@ -292,6 +313,23 @@
       groupCard.className = 'code';
       groupCard.innerHTML = renderGroupCall();
       treeSection.appendChild(groupCard);
+
+      // Reduced motion: auto-respects the OS setting (default true). Renders
+      // static + fully drawn for visitors who prefer reduced motion.
+      const rmOpts = {
+        start: '#rm-b',
+        end: '#rm-a',
+        roughness: 0.5,
+        respectReducedMotion: true,
+        label: 'a11y',
+      };
+      scrollArrow({ ...base, ...rmOpts });
+
+      const rmSection = document.querySelectorAll('.section')[6];
+      const rmCard = document.createElement('div');
+      rmCard.className = 'code';
+      rmCard.innerHTML = renderCall(rmOpts);
+      rmSection.appendChild(rmCard);
 
       function renderGroupCall() {
         const arrows = groupArrows

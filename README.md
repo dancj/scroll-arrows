@@ -59,6 +59,10 @@ arrow.destroy();
   router: it clears the worst blocker, not a full path-finder.
 - **Manual mode** — `scroll: false` + `setProgress(0..1)` to drive it yourself
   (e.g. from GSAP/Motion).
+- **Reduced motion** — arrows auto-respect `prefers-reduced-motion: reduce`,
+  rendering fully drawn and static (no scroll animation) while still tracking
+  layout. Opt out with `respectReducedMotion: false` to keep the animation.
+  Works the same for `scrollArrowGroup`.
 - **Labels** — `label` rides along the line at `labelAt` (0..1, default mid)
   and can sit off the line via `labelOffset` (perpendicular px; + = left of the
   draw direction, − = right). Fades in as the pen draws through it.

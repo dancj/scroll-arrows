@@ -10,6 +10,21 @@ export function clamp01(t: number): number {
 }
 
 /**
+ * True when the user has asked the OS to reduce motion. Guarded so it degrades
+ * to `false` (animate normally) wherever `matchMedia` is unavailable — SSR,
+ * older or headless environments.
+ */
+export function prefersReducedMotion(): boolean {
+  if (
+    typeof window === 'undefined' ||
+    typeof window.matchMedia !== 'function'
+  ) {
+    return false;
+  }
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/**
  * Progress 0..1 of `targetTop` moving up through the viewport, mapped onto the
  * draw window `[enter, leave]` (fractions of viewport height, enter > leave).
  */
