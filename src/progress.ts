@@ -24,6 +24,32 @@ export function scrollProgress(
   return clamp01((enter - topFrac) / (enter - leave || 1));
 }
 
+/** A draw window within a group's 0..1 progress for one arrow. */
+export interface StaggerWindow {
+  start: number;
+  span: number;
+}
+
+/**
+ * Slice `[0,1]` into one draw window per arrow given a `stagger` of 0..1.
+ * `stagger = 1` => non-overlapping equal slices (fully sequential).
+ * `stagger = 0` => every window is the full `[0,1]` (all draw together).
+ */
+export function staggerWindows(n: number, stagger: number): StaggerWindow[] {
+  if (n <= 0) return [];
+  const s = clamp01(stagger);
+  // span chosen so the last window ends exactly at 1: span * (1 + (n-1)*s) = 1.
+  const span = 1 / (1 + (n - 1) * s);
+  const step = span * s;
+  return Array.from({ length: n }, (_, i) => ({ start: i * step, span }));
+}
+
+/** Map overall progress `p` into a single window's local 0..1 progress. */
+export function windowProgress(p: number, w: StaggerWindow): number {
+  if (w.span <= 0) return p > w.start ? 1 : 0;
+  return clamp01((p - w.start) / w.span);
+}
+
 /** A synthetic rect centered between two elements, for the default target. */
 export function midpointRect(a: Element, b: Element): DocRect {
   const ra = docRect(a);

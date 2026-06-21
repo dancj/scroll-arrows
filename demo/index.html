@@ -106,6 +106,18 @@
         transform: translate(-50%, -50%);
       }
 
+      /* org/family tree: one parent over a row of children */
+      .tree {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 9rem;
+      }
+      .tree .kids {
+        display: flex;
+        gap: 8rem;
+      }
+
       .code {
         margin: 1.6rem auto 0;
         max-width: 440px;
@@ -191,10 +203,22 @@
       </div>
     </section>
 
+    <section class="section">
+      <h2>Staggered group · tree reveal</h2>
+      <div class="stage tree">
+        <div class="box brown" id="t-root">root</div>
+        <div class="kids">
+          <div class="box" id="t-a">child A</div>
+          <div class="box" id="t-b">child B</div>
+          <div class="box" id="t-c">child C</div>
+        </div>
+      </div>
+    </section>
+
     <div class="spacer">— fin —</div>
 
     <script type="module">
-      import { scrollArrow } from '../src/index.ts';
+      import { scrollArrow, scrollArrowGroup } from '../src/index.ts';
 
       const PAGE_BG = '#111317';
       const base = {
@@ -249,6 +273,41 @@
         card.innerHTML = renderCall(opts); // show the meaningful opts, not base noise
         section.appendChild(card);
       });
+
+      // Staggered group: root → A, B, C drawn in sequence off one trigger.
+      const groupArrows = [
+        { start: '#t-root', end: '#t-a' },
+        { start: '#t-root', end: '#t-b' },
+        { start: '#t-root', end: '#t-c' },
+      ];
+      scrollArrowGroup({
+        ...base,
+        arrows: groupArrows.map((a) => ({ ...base, ...a, roughness: 0.5 })),
+        stagger: 1,
+        scroll: { target: '.tree' },
+      });
+
+      const treeSection = document.querySelectorAll('.section')[5];
+      const groupCard = document.createElement('div');
+      groupCard.className = 'code';
+      groupCard.innerHTML = renderGroupCall();
+      treeSection.appendChild(groupCard);
+
+      function renderGroupCall() {
+        const arrows = groupArrows
+          .map(
+            (a) =>
+              `    { <span class="k">start</span>: <span class="s">"${a.start}"</span>, <span class="k">end</span>: <span class="s">"${a.end}"</span> },`,
+          )
+          .join('\n');
+        return (
+          `<span class="fn">scrollArrowGroup</span>({\n` +
+          `  <span class="k">arrows</span>: [\n${arrows}\n  ],\n` +
+          `  <span class="k">stagger</span>: <span class="n">1</span>,\n` +
+          `  <span class="k">scroll</span>: { <span class="k">target</span>: <span class="s">".tree"</span> },\n` +
+          `})`
+        );
+      }
 
       // Pretty-print an options object as a highlighted scrollArrow({...}) call.
       function renderCall(opts) {
