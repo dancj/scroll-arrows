@@ -185,7 +185,14 @@ export class ScrollArrow {
   private computeEndpoints(sr: DocRect, er: DocRect): Endpoints {
     const ss: Socket = this.opts.startSocket ?? 'auto';
     const es: Socket = this.opts.endSocket ?? 'auto';
-    return resolveEndpoints(sr, er, ss, es);
+    return resolveEndpoints(
+      sr,
+      er,
+      ss,
+      es,
+      this.opts.startSocketOffset ?? 0,
+      this.opts.endSocketOffset ?? 0,
+    );
   }
 
   private render(): void {

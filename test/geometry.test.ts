@@ -73,6 +73,32 @@ describe('resolveEndpoints', () => {
     expect(ep.start).toEqual({ x: 50, y: 50 });
     expect(ep.startNormal).toEqual({ x: 0, y: 0 });
   });
+
+  it('slides the start point along a horizontal edge by the socket offset', () => {
+    // bottom edge of A is y=100; offset +0.25 of width(100) shifts x by +25.
+    const ep = resolveEndpoints(A, BELOW, 'bottom', 'top', 0.25);
+    expect(ep.start).toEqual({ x: 75, y: 100 });
+    expect(ep.end).toEqual({ x: 50, y: 300 }); // end offset defaults to 0
+  });
+
+  it('slides the end point along a vertical edge by the socket offset', () => {
+    // right edge of RIGHT-of-A geometry: use left edge of RIGHT (x=300), shift y.
+    const ep = resolveEndpoints(A, RIGHT, 'right', 'left', 0, -0.25);
+    expect(ep.end).toEqual({ x: 300, y: 25 }); // y center 50 - 0.25*100
+  });
+
+  it('clamps socket offset to the edge (|offset| <= 0.5)', () => {
+    const ep = resolveEndpoints(A, BELOW, 'bottom', 'top', 5);
+    expect(ep.start).toEqual({ x: 100, y: 100 }); // clamped to +0.5 → corner
+  });
+
+  it('fans out three arrows sharing one bottom edge', () => {
+    const offsets = [-0.3, 0, 0.3];
+    const xs = offsets.map(
+      (o) => resolveEndpoints(A, BELOW, 'bottom', 'top', o).start.x,
+    );
+    expect(xs).toEqual([20, 50, 80]); // spread across the edge, no stacking
+  });
 });
 
 describe('buildPath', () => {
