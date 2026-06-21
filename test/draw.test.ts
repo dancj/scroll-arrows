@@ -91,8 +91,16 @@ describe('labelOpacity', () => {
   });
 
   it('clamps the label position', () => {
-    expect(labelOpacity(1, 2)).toBe(0); // labelAt clamped to 1, pen never past
     expect(labelOpacity(0.5, -1)).toBe(1); // labelAt clamped to 0, pen well past
+  });
+
+  it('shows an end-anchored label by the time drawing completes', () => {
+    // labelAt 1 (or beyond) must reach full opacity at lineProg 1 — the ramp
+    // start is clamped to 1 - fade so the window fits within [0, 1].
+    expect(labelOpacity(1, 1)).toBeCloseTo(1);
+    expect(labelOpacity(1, 2)).toBeCloseTo(1); // clamped to 1, fully drawn -> visible
+    expect(labelOpacity(0.92, 1, 0.08)).toBe(0); // ramp starts at 1 - fade
+    expect(labelOpacity(0.96, 1, 0.08)).toBeCloseTo(0.5); // halfway through
   });
 });
 

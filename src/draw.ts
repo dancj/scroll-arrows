@@ -85,11 +85,17 @@ export function lineProgress(segs: DrawSegment[], eased: number): number {
 /**
  * Label opacity: 0 until the pen reaches `labelAt`, then ramps to 1 over a
  * short `fade` window so the label appears as the line is drawn through it.
+ *
+ * The ramp start is clamped so the window always fits within `[0, 1]`. Without
+ * this an end-anchored label (`labelAt` 1, or anything within `fade` of the
+ * end) could never reach full opacity — `lineProg` tops out at 1, so it would
+ * stay invisible. Interior labels keep their trailing fade unchanged.
  */
 export function labelOpacity(
   lineProg: number,
   labelAt: number,
   fade = 0.08,
 ): number {
-  return clamp01((lineProg - clamp01(labelAt)) / (fade || 1));
+  const start = Math.min(clamp01(labelAt), 1 - fade);
+  return clamp01((lineProg - start) / (fade || 1));
 }
