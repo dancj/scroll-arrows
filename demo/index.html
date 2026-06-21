@@ -273,19 +273,18 @@
           Tab 2
         </button>
       </div>
-      <div class="stage">
-        <div class="panel row" id="panel-1">
-          <div class="box" id="hidden-a">always visible</div>
-        </div>
-        <!-- The arrow's end anchor lives in this initially-hidden panel. -->
-        <div class="panel row" id="panel-2" hidden>
+      <!-- The start anchor stays visible; only the target panel toggles, so the
+           arrow has both anchors once the target is revealed. -->
+      <div class="stage row">
+        <div class="box" id="hidden-a">source</div>
+        <div class="panel" id="panel-2" hidden>
           <div class="box brown" id="hidden-b">revealed on Tab 2</div>
         </div>
       </div>
       <p style="text-align: center; color: #9aa4b2">
-        Switch to Tab 2 — the arrow’s target starts in a
-        <code>hidden</code> panel, so nothing draws until reveal, then
-        <code>refresh()</code> snaps it into place.
+        Tab 1 keeps the target in a <code>hidden</code> panel, so nothing draws.
+        Switch to Tab 2 to reveal it — <code>refresh()</code> then snaps the
+        arrow into place.
       </p>
     </section>
 
@@ -458,18 +457,14 @@
         progress: 1,
         label: 'refresh()',
       });
-      const panels = {
-        'tab-1': 'panel-1',
-        'tab-2': 'panel-2',
-      };
+      const targetPanel = document.getElementById('panel-2');
       document.querySelectorAll('.tabs button').forEach((btn) => {
         btn.addEventListener('click', () => {
-          document.querySelectorAll('.tabs button').forEach((b) => {
-            const active = b === btn;
-            b.setAttribute('aria-selected', String(active));
-            document.getElementById(panels[b.id]).hidden = !active;
-          });
-          tabArrow.refresh(); // anchor now has a box — recompute and draw
+          document
+            .querySelectorAll('.tabs button')
+            .forEach((b) => b.setAttribute('aria-selected', String(b === btn)));
+          targetPanel.hidden = btn.id !== 'tab-2'; // Tab 2 reveals the target
+          tabArrow.refresh(); // target now has a box — recompute and draw
         });
       });
 
