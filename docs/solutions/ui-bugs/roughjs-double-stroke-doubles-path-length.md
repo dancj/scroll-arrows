@@ -1,5 +1,5 @@
 ---
-title: "rough.js double stroke doubles getTotalLength, halving labelAt placement"
+title: 'rough.js double stroke doubles getTotalLength, halving labelAt placement'
 date: 2026-06-21
 category: ui-bugs
 module: scroll-arrow label placement
@@ -7,7 +7,7 @@ problem_type: ui_bug
 component: tooling
 symptoms:
   - "A label at labelAt 0.22 rendered near the curve's apex (~44%), not at 22%"
-  - "labelAt 0.5 rendered at the endpoint instead of the midpoint"
+  - 'labelAt 0.5 rendered at the endpoint instead of the midpoint'
   - "'start' and 'end' looked correct by coincidence, masking the bug"
 root_cause: wrong_api
 resolution_type: code_fix
@@ -75,7 +75,10 @@ two `M` subpaths**. Confirmed against the bundled generator:
 ```js
 import rough from 'roughjs';
 const gen = rough.generator();
-const drawable = gen.path('M 0 0 C 100 -80 300 -80 400 0', { roughness: 0.5, seed: 42 });
+const drawable = gen.path('M 0 0 C 100 -80 300 -80 400 0', {
+  roughness: 0.5,
+  seed: 42,
+});
 const sets = gen.toPaths(drawable);
 // sets.length === 1, and that single path's d contains 2 "M" commands
 ```
