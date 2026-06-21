@@ -1,6 +1,39 @@
 import { clamp01 } from './progress';
+import type { LabelPosition } from './types';
 
 export type SegmentKind = 'line' | 'head';
+
+const LABEL_KEYWORDS: Record<string, number> = {
+  start: 0,
+  middle: 0.5,
+  end: 1,
+};
+
+/**
+ * Resolve any accepted `labelAt` form to a clamped `0..1` fraction:
+ * - `'start' | 'middle' | 'end'` keywords;
+ * - a number (clamped);
+ * - a `'<n>%'` percentage string.
+ * Malformed input falls back to `fallback` rather than throwing, matching the
+ * library's clamp-don't-throw style.
+ */
+export function resolveLabelAt(
+  value: LabelPosition | undefined,
+  fallback = 0.5,
+): number {
+  if (value == null) return fallback;
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? clamp01(value) : fallback;
+  }
+  const key = value.trim().toLowerCase();
+  const keyword = LABEL_KEYWORDS[key];
+  if (keyword !== undefined) return keyword;
+  if (key.endsWith('%')) {
+    const n = Number.parseFloat(key.slice(0, -1));
+    return Number.isFinite(n) ? clamp01(n / 100) : fallback;
+  }
+  return fallback;
+}
 
 export interface DrawSegment {
   len: number;

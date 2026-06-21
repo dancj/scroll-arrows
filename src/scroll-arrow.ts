@@ -25,7 +25,7 @@ import {
 } from './progress';
 import { getOverlay, overlayOrigin, createGroup, createSvgEl } from './overlay';
 import { mapRoughness, deriveSeed } from './roughness';
-import { dashOffsets, lineProgress, labelOpacity } from './draw';
+import { dashOffsets, lineProgress, labelOpacity, resolveLabelAt } from './draw';
 
 interface ResolvedRefs {
   start: Element;
@@ -69,6 +69,8 @@ export class ScrollArrow {
   private lineEl: SVGPathElement | null = null;
   private labelEl: SVGTextElement | null = null;
   private labelBgEl: SVGRectElement | null = null;
+  /** `opts.labelAt` resolved to a 0..1 fraction; cached by renderLabel for the draw loop. */
+  private resolvedLabelAt = 0.5;
   private progress: number;
 
   private ro?: ResizeObserver;
@@ -308,7 +310,8 @@ export class ScrollArrow {
     if (!text || !this.lineEl) return;
 
     const total = this.lineEl.getTotalLength();
-    const at = clampAt(this.opts.labelAt ?? 0.5);
+    const at = resolveLabelAt(this.opts.labelAt);
+    this.resolvedLabelAt = at;
     const pt = this.lineEl.getPointAtLength(at * total);
 
     // Optional perpendicular offset: sample just-before/just-after to get the
@@ -385,7 +388,7 @@ export class ScrollArrow {
     if (this.labelEl) {
       const op = labelOpacity(
         lineProgress(this.segments, eased),
-        this.opts.labelAt ?? 0.5,
+        this.resolvedLabelAt,
       );
       this.labelEl.style.opacity = String(op);
       if (this.labelBgEl) this.labelBgEl.style.opacity = String(op);
@@ -458,8 +461,4 @@ function refKey(ref: ElementRef): string {
   return typeof ref === 'string'
     ? ref
     : ref.tagName + (ref.id ? '#' + ref.id : '');
-}
-
-function clampAt(t: number): number {
-  return t < 0 ? 0 : t > 1 ? 1 : t;
 }

@@ -3,6 +3,7 @@ import {
   dashOffsets,
   lineProgress,
   labelOpacity,
+  resolveLabelAt,
   type DrawSegment,
 } from '../src/draw';
 
@@ -92,5 +93,51 @@ describe('labelOpacity', () => {
   it('clamps the label position', () => {
     expect(labelOpacity(1, 2)).toBe(0); // labelAt clamped to 1, pen never past
     expect(labelOpacity(0.5, -1)).toBe(1); // labelAt clamped to 0, pen well past
+  });
+});
+
+describe('resolveLabelAt', () => {
+  it('maps keywords to fractions', () => {
+    expect(resolveLabelAt('start')).toBe(0);
+    expect(resolveLabelAt('middle')).toBe(0.5);
+    expect(resolveLabelAt('end')).toBe(1);
+  });
+
+  it('is case- and whitespace-insensitive for keywords', () => {
+    expect(resolveLabelAt(' END ')).toBe(1);
+    expect(resolveLabelAt('Start')).toBe(0);
+  });
+
+  it('parses percentage strings', () => {
+    expect(resolveLabelAt('25%')).toBe(0.25);
+    expect(resolveLabelAt('0%')).toBe(0);
+    expect(resolveLabelAt('100%')).toBe(1);
+    expect(resolveLabelAt('50.5%')).toBeCloseTo(0.505);
+  });
+
+  it('falls back for a bare percent sign', () => {
+    expect(resolveLabelAt(' % ')).toBe(0.5);
+  });
+
+  it('clamps out-of-range percentages', () => {
+    expect(resolveLabelAt('150%')).toBe(1);
+    expect(resolveLabelAt('-10%')).toBe(0);
+  });
+
+  it('passes through and clamps numbers', () => {
+    expect(resolveLabelAt(0.3)).toBe(0.3);
+    expect(resolveLabelAt(2)).toBe(1);
+    expect(resolveLabelAt(-1)).toBe(0);
+  });
+
+  it('falls back to the default for undefined', () => {
+    expect(resolveLabelAt(undefined)).toBe(0.5);
+    expect(resolveLabelAt(undefined, 0.2)).toBe(0.2);
+  });
+
+  it('falls back for malformed input rather than throwing', () => {
+    expect(resolveLabelAt('garbage')).toBe(0.5);
+    expect(resolveLabelAt('abc%')).toBe(0.5);
+    expect(resolveLabelAt(NaN)).toBe(0.5);
   });
 });

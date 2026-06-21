@@ -89,9 +89,11 @@ arrow.destroy();
   rendering fully drawn and static (no scroll animation) while still tracking
   layout. Opt out with `respectReducedMotion: false` to keep the animation.
   Works the same for `scrollArrowGroup`.
-- **Labels** — `label` rides along the line at `labelAt` (0..1, default mid)
-  and can sit off the line via `labelOffset` (perpendicular px; + = left of the
-  draw direction, − = right). Fades in as the pen draws through it.
+- **Labels** — `label` rides along the line at `labelAt` — a keyword
+  (`'start'` / `'middle'` / `'end'`), a `0..1` fraction, or a percentage string
+  like `'25%'` (default `'middle'`) — and can sit off the line via `labelOffset`
+  (perpendicular px; + = left of the draw direction, − = right). Fades in as the
+  pen draws through it.
   `labelBackground` masks a gap in the line behind the text (the excalidraw
   look); style via `labelColor` / `font`.
 - **Staggered groups** — `scrollArrowGroup` owns N arrows and reveals them in
