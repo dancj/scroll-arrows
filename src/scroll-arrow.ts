@@ -25,7 +25,12 @@ import {
 } from './progress';
 import { getOverlay, overlayOrigin, createGroup, createSvgEl } from './overlay';
 import { mapRoughness, deriveSeed } from './roughness';
-import { dashOffsets, lineProgress, labelOpacity, resolveLabelAt } from './draw';
+import {
+  dashOffsets,
+  lineProgress,
+  labelOpacity,
+  resolveLabelAt,
+} from './draw';
 
 interface ResolvedRefs {
   start: Element;

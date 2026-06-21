@@ -1,5 +1,5 @@
 ---
-title: "feat: Semantic label positioning for scrollArrow"
+title: 'feat: Semantic label positioning for scrollArrow'
 date: 2026-06-21
 type: feat
 status: ready
@@ -23,7 +23,7 @@ The current label config has two axes that are easy to confuse:
 - `labelAt?: number` — position **along** the line, `0..1`. Not obvious that a
   bare number means a fraction, and `0.5` reads as arbitrary.
 - `labelOffset?: number` — perpendicular distance **from** the line in px.
-  The name "offset" reads like it should move the label *along* the arrow, so
+  The name "offset" reads like it should move the label _along_ the arrow, so
   `labelOffset: 26` surprises users (it shifts sideways, not forward).
 
 The user wants semantic, self-documenting values: `'start' | 'middle' | 'end'`
@@ -35,6 +35,7 @@ behavior change.
 ## Scope Boundaries
 
 In scope:
+
 - Accept `'start' | 'middle' | 'end'` and `'<n>%'` strings for `labelAt`.
 - A single shared resolver that maps any accepted `labelAt` form to a clamped
   `0..1` number, used by both label placement and label fade-in.
@@ -42,11 +43,13 @@ In scope:
 - Update demo to showcase a semantic value.
 
 ### Deferred to Follow-Up Work
+
 - Renaming `labelOffset` (e.g. to `labelGap` / `labelDistance`). A rename is a
   breaking API change; defer unless the user wants it.
 - Semantic horizontal-side keywords for `labelOffset` (e.g. `'left' | 'right'`).
 
 Out of scope:
+
 - Changing label rendering, fonts, background masking, or fade behavior.
 
 ---
@@ -77,9 +80,11 @@ Out of scope:
 along-vs-perpendicular distinction obvious.
 
 **Files:**
+
 - `src/types.ts` (modify)
 
 **Approach:**
+
 - Add an exported type alias, e.g.
   `export type LabelPosition = number | 'start' | 'middle' | 'end' | string;`
   (the `string` arm carries `'<n>%'`; keep the literals for editor
@@ -100,12 +105,14 @@ covered by U2.
 label placement and fade-in.
 
 **Files:**
+
 - `src/draw.ts` (modify — add and export `resolveLabelAt`; co-located with the
   other label helper `labelOpacity`)
 - `src/scroll-arrow.ts` (modify — call `resolveLabelAt` at both sites)
 - `test/draw.test.ts` (modify — add resolver tests)
 
 **Approach:**
+
 - `resolveLabelAt(value: LabelPosition | undefined, fallback = 0.5): number`:
   - `undefined` → `fallback`.
   - number → clamp to `0..1`.
@@ -125,6 +132,7 @@ label placement and fade-in.
 unit-tested); `clamp01` already in that file.
 
 **Test scenarios** (in `test/draw.test.ts`):
+
 - `resolveLabelAt('start')` → `0`; `'middle'` → `0.5`; `'end'` → `1`.
 - `resolveLabelAt('25%')` → `0.25`; `'0%'` → `0`; `'100%'` → `1`.
 - `resolveLabelAt('150%')` clamps to `1`; `'-10%'` clamps to `0`.
@@ -138,9 +146,11 @@ unit-tested); `clamp01` already in that file.
 **Goal:** Demo demonstrates the new ergonomic API.
 
 **Files:**
+
 - `demo/index.html` (modify)
 
 **Approach:**
+
 - Update at least one existing labelled arrow to use a semantic value, e.g.
   change the `labelAt: 0.22` example to a percentage string `'22%'`, and/or set
   a keyword like `labelAt: 'end'` on another. Keep `labelOffset` examples as-is
