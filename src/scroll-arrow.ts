@@ -18,6 +18,7 @@ import {
   midpointRect,
   easeInOutCubic,
   clamp01,
+  prefersReducedMotion,
 } from './progress';
 import { getOverlay, overlayOrigin, createGroup, createSvgEl } from './overlay';
 import { mapRoughness, deriveSeed } from './roughness';
@@ -70,6 +71,8 @@ export class ScrollArrow {
   private ro?: ResizeObserver;
   private rafId = 0;
   private destroyed = false;
+  /** Render static + fully drawn: user prefers reduced motion and we honor it. */
+  private reducedMotion: boolean;
 
   constructor(options: ScrollArrowOptions) {
     this.opts = {
@@ -86,7 +89,10 @@ export class ScrollArrow {
     this.svg = getOverlay(this.container);
     this.rc = rough.svg(this.svg);
     this.svg.appendChild(this.group);
-    this.progress = clamp01(this.opts.progress);
+    this.reducedMotion =
+      this.opts.respectReducedMotion !== false && prefersReducedMotion();
+    // Reduced motion renders the arrow complete and static.
+    this.progress = this.reducedMotion ? 1 : clamp01(this.opts.progress);
 
     this.refs = this.resolveRefs();
     this.stroke =
@@ -331,7 +337,9 @@ export class ScrollArrow {
     if (this.refs.target) targets.push(this.refs.target);
     this.ro = new ResizeObserver(() => this.render());
     targets.forEach((t) => this.ro!.observe(t));
-    if (this.opts.scroll !== false) {
+    // Reduced motion behaves like scroll:false — static, no scroll listeners —
+    // but keeps the ResizeObserver above so anchors still track layout.
+    if (this.opts.scroll !== false && !this.reducedMotion) {
       window.addEventListener('scroll', this.onScroll, true);
       window.addEventListener('resize', this.onScroll);
     }
@@ -347,7 +355,7 @@ export class ScrollArrow {
 
   private update(): void {
     if (this.destroyed) return;
-    if (this.opts.scroll === false) {
+    if (this.opts.scroll === false || this.reducedMotion) {
       this.applyProgress();
       return;
     }

@@ -9,6 +9,7 @@ import {
   clamp01,
   staggerWindows,
   windowProgress,
+  prefersReducedMotion,
   type StaggerWindow,
 } from './progress';
 import { docRect, type DocRect } from './geometry';
@@ -30,6 +31,8 @@ export class ScrollArrowGroup {
   private progress = 0;
   private rafId = 0;
   private destroyed = false;
+  /** Render every arrow static + fully drawn when reduced motion is honored. */
+  private reducedMotion: boolean;
 
   constructor(options: ScrollArrowGroupOptions) {
     if (!options.arrows || options.arrows.length === 0) {
@@ -41,10 +44,20 @@ export class ScrollArrowGroup {
       easing: (t) => t,
       ...options,
     };
+    this.reducedMotion =
+      this.opts.respectReducedMotion !== false && prefersReducedMotion();
 
-    // Each arrow is driven by the group, never by its own scroll listener.
+    // Each arrow is driven by the group, never by its own scroll listener. The
+    // group is the single decision point for reduced motion, so children never
+    // re-detect it themselves.
     this.arrows = options.arrows.map(
-      (a) => new ScrollArrow({ ...a, scroll: false, progress: 0 }),
+      (a) =>
+        new ScrollArrow({
+          ...a,
+          scroll: false,
+          progress: 0,
+          respectReducedMotion: false,
+        }),
     );
     this.windows = staggerWindows(this.arrows.length, this.opts.stagger);
 
@@ -60,6 +73,9 @@ export class ScrollArrowGroup {
     if (scroll !== false && scroll?.target) {
       this.target = resolve(scroll.target);
     }
+
+    // Reduced motion reveals the whole group complete and static.
+    if (this.reducedMotion) this.progress = 1;
 
     this.bind();
     this.update();
@@ -88,7 +104,7 @@ export class ScrollArrowGroup {
   // --- internals ---------------------------------------------------------
 
   private bind(): void {
-    if (this.opts.scroll === false) return;
+    if (this.opts.scroll === false || this.reducedMotion) return;
     window.addEventListener('scroll', this.onScroll, true);
     window.addEventListener('resize', this.onScroll);
   }
@@ -103,7 +119,7 @@ export class ScrollArrowGroup {
 
   private update(): void {
     if (this.destroyed) return;
-    if (this.opts.scroll === false) {
+    if (this.opts.scroll === false || this.reducedMotion) {
       this.distribute();
       return;
     }
