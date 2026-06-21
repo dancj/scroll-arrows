@@ -40,18 +40,24 @@ function center(r: DocRect): Point {
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
 }
 
-/** The anchor point on a given edge of a rect. */
-function socketPoint(r: DocRect, side: Socket): Point {
+/**
+ * The anchor point on a given edge of a rect. `offset` slides the point along
+ * the edge as a fraction of the edge length: `0` = centered, `-0.5`/`+0.5` =
+ * the corners (clamped to that range so it stays on the edge). Used to fan out
+ * several arrows that share an edge so they don't stack on one point.
+ */
+function socketPoint(r: DocRect, side: Socket, offset = 0): Point {
   const c = center(r);
+  const o = offset < -0.5 ? -0.5 : offset > 0.5 ? 0.5 : offset;
   switch (side) {
     case 'top':
-      return { x: c.x, y: r.top };
+      return { x: c.x + o * r.width, y: r.top };
     case 'bottom':
-      return { x: c.x, y: r.top + r.height };
+      return { x: c.x + o * r.width, y: r.top + r.height };
     case 'left':
-      return { x: r.left, y: c.y };
+      return { x: r.left, y: c.y + o * r.height };
     case 'right':
-      return { x: r.left + r.width, y: c.y };
+      return { x: r.left + r.width, y: c.y + o * r.height };
     default:
       return c;
   }
@@ -101,12 +107,14 @@ export function resolveEndpoints(
   endRect: DocRect,
   startSocket: Socket,
   endSocket: Socket,
+  startOffset = 0,
+  endOffset = 0,
 ): Endpoints {
   const s = startSocket === 'auto' ? autoSide(startRect, endRect) : startSocket;
   const e = endSocket === 'auto' ? autoSide(endRect, startRect) : endSocket;
   return {
-    start: socketPoint(startRect, s),
-    end: socketPoint(endRect, e),
+    start: socketPoint(startRect, s, startOffset),
+    end: socketPoint(endRect, e, endOffset),
     startNormal: socketNormal(s),
     endNormal: socketNormal(e),
   };

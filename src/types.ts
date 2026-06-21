@@ -53,6 +53,15 @@ export interface ScrollArrowOptions {
   startSocket?: Socket;
   /** Force an end edge. Default "auto". */
   endSocket?: Socket;
+  /**
+   * Slide the start attach point along its edge, as a fraction of the edge
+   * length: `0` (default) = centered, `-0.5`/`+0.5` = the corners. Use to fan
+   * out several arrows that leave the same element so they don't stack on one
+   * point (e.g. `-0.25`, `0`, `+0.25` for three siblings).
+   */
+  startSocketOffset?: number;
+  /** Slide the end attach point along its edge. See `startSocketOffset`. */
+  endSocketOffset?: number;
   /** Extra bow of the underlying curve, 0..1. Folded into roughness if unset. */
   curvature?: number;
   /**

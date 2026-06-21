@@ -349,10 +349,12 @@
       });
 
       // Staggered group: root → A, B, C drawn in sequence off one trigger.
+      // All three leave the root's bottom edge, so fan them out with
+      // startSocketOffset instead of letting them stack on one point.
       const groupArrows = [
-        { start: '#t-root', end: '#t-a' },
-        { start: '#t-root', end: '#t-b' },
-        { start: '#t-root', end: '#t-c' },
+        { start: '#t-root', end: '#t-a', startSocketOffset: -0.3 },
+        { start: '#t-root', end: '#t-b', startSocketOffset: 0 },
+        { start: '#t-root', end: '#t-c', startSocketOffset: 0.3 },
       ];
       scrollArrowGroup({
         ...base,
