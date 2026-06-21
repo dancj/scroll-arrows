@@ -15,6 +15,14 @@ export type Route = 'curved' | 'elbow';
 /** Anything we can resolve to a live DOM element. */
 export type ElementRef = Element | string;
 
+/**
+ * Where a label sits along the line: a keyword, a `0..1` fraction, or a
+ * percentage string like `'25%'`. A dynamically built percentage string is
+ * typed as `string`, so cast it (`pct as LabelPosition`) — any unrecognized
+ * value falls back to the default at runtime.
+ */
+export type LabelPosition = 'start' | 'middle' | 'end' | number | `${number}%`;
+
 export interface ScrollOptions {
   /**
    * The element whose travel through the viewport drives the draw.
@@ -100,11 +108,18 @@ export interface ScrollArrowOptions {
 
   /** Text to place along the line. Omit for no label. */
   label?: string;
-  /** Position of the label along the line, 0 (start) .. 1 (end). Default 0.5. */
-  labelAt?: number;
   /**
-   * Perpendicular offset from the line in px. Positive sits to the left of the
-   * draw direction, negative to the right; 0 sits on the line. Default 0.
+   * Where the label sits *along* the line. Accepts:
+   * - a keyword: `'start'`, `'middle'`, or `'end'`;
+   * - a `0..1` fraction (`0` = start, `1` = end); or
+   * - a percentage string like `'25%'`.
+   * Default `'middle'`. For sideways placement see `labelOffset`.
+   */
+  labelAt?: LabelPosition;
+  /**
+   * How far the label sits *perpendicular* to the line, in px (sideways, not
+   * along it). Positive sits to the left of the draw direction, negative to the
+   * right; 0 sits on the line. Default 0.
    */
   labelOffset?: number;
   /** Label text color. Default: stroke color. */

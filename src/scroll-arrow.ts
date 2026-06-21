@@ -25,7 +25,12 @@ import {
 } from './progress';
 import { getOverlay, overlayOrigin, createGroup, createSvgEl } from './overlay';
 import { mapRoughness, deriveSeed } from './roughness';
-import { dashOffsets, lineProgress, labelOpacity } from './draw';
+import {
+  dashOffsets,
+  lineProgress,
+  labelOpacity,
+  resolveLabelAt,
+} from './draw';
 
 interface ResolvedRefs {
   start: Element;
@@ -67,8 +72,17 @@ export class ScrollArrow {
   }[] = [];
   /** Representative line stroke + label nodes, when a label is set. */
   private lineEl: SVGPathElement | null = null;
+  /**
+   * The smooth ideal path `d` (pre-roughjs). Label placement measures against
+   * this, not `lineEl`: rough.js bakes its double stroke into one path with two
+   * subpaths, so `lineEl.getTotalLength()` is ~2x the visible curve and would
+   * put `labelAt` at twice its intended fraction.
+   */
+  private lineD = '';
   private labelEl: SVGTextElement | null = null;
   private labelBgEl: SVGRectElement | null = null;
+  /** `opts.labelAt` resolved to a 0..1 fraction; cached by renderLabel for the draw loop. */
+  private resolvedLabelAt = 0.5;
   private progress: number;
 
   private ro?: ResizeObserver;
@@ -262,6 +276,7 @@ export class ScrollArrow {
       const belly = { x: clear.x * BOW, y: clear.y * BOW };
       d = buildPath(local, curvature, belly);
     }
+    this.lineD = d;
     this.appendDrawable(this.rc.path(d, roughOpts), 'line');
 
     // Arrowheads.
@@ -305,11 +320,18 @@ export class ScrollArrow {
     this.labelEl = null;
     this.labelBgEl = null;
     const text = this.opts.label;
-    if (!text || !this.lineEl) return;
+    if (!text || !this.lineEl || !this.lineD) return;
 
-    const total = this.lineEl.getTotalLength();
-    const at = clampAt(this.opts.labelAt ?? 0.5);
-    const pt = this.lineEl.getPointAtLength(at * total);
+    const at = resolveLabelAt(this.opts.labelAt);
+    this.resolvedLabelAt = at;
+
+    // Measure against the smooth ideal path, not the rough double stroke. The
+    // measuring path is invisible (no fill/stroke) and removed once sampled.
+    const measure = createSvgEl('path');
+    measure.setAttribute('d', this.lineD);
+    this.group.appendChild(measure);
+    const total = measure.getTotalLength();
+    const pt = measure.getPointAtLength(at * total);
 
     // Optional perpendicular offset: sample just-before/just-after to get the
     // local tangent, then shift along its left-hand normal.
@@ -318,16 +340,13 @@ export class ScrollArrow {
     let y = pt.y;
     if (offset && total > 0) {
       const eps = Math.min(1, total / 2);
-      const before = this.lineEl.getPointAtLength(
-        Math.max(0, at * total - eps),
-      );
-      const after = this.lineEl.getPointAtLength(
-        Math.min(total, at * total + eps),
-      );
+      const before = measure.getPointAtLength(Math.max(0, at * total - eps));
+      const after = measure.getPointAtLength(Math.min(total, at * total + eps));
       const n = unitNormal(before, after);
       x += n.x * offset;
       y += n.y * offset;
     }
+    this.group.removeChild(measure);
 
     const label = createSvgEl('text');
     label.textContent = text;
@@ -385,7 +404,7 @@ export class ScrollArrow {
     if (this.labelEl) {
       const op = labelOpacity(
         lineProgress(this.segments, eased),
-        this.opts.labelAt ?? 0.5,
+        this.resolvedLabelAt,
       );
       this.labelEl.style.opacity = String(op);
       if (this.labelBgEl) this.labelBgEl.style.opacity = String(op);
@@ -458,8 +477,4 @@ function refKey(ref: ElementRef): string {
   return typeof ref === 'string'
     ? ref
     : ref.tagName + (ref.id ? '#' + ref.id : '');
-}
-
-function clampAt(t: number): number {
-  return t < 0 ? 0 : t > 1 ? 1 : t;
 }
