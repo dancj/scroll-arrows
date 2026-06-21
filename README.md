@@ -177,6 +177,26 @@ For an Astro React island, use the React API and hydrate with `client:visible`:
 <Diagram client:visible />
 ```
 
+## SSR & progressive enhancement
+
+scroll-arrows is **progressive-enhancement only by design**. The arrow is an
+overlay `<svg>` created by the client script at runtime — there is no
+server-rendered or build-time output. In SSG/SSR setups (Astro, Next, etc.) the
+connector simply does not exist until the script runs, so:
+
+- **No-JS / pre-hydration users see nothing** where an arrow would be. Arrows
+  are treated as decorative enhancement, not content.
+- Don't encode meaning solely in an arrow. If a relationship must survive without
+  JS (accessibility, SEO, no-JS fallback), express it in the DOM too — adjacent
+  copy, a list, a caption, an `aria-label` — and let the arrow decorate it.
+- The library ships no static snapshot. Geometry depends on the live, laid-out
+  positions of both anchors (and the viewport), which aren't known at build time,
+  so a server-rendered arrow would usually be wrong anyway.
+
+If you genuinely need a static connector in the un-hydrated state, hand-author a
+plain `<svg>` in your markup and let scroll-arrows draw over it on hydration —
+the runtime arrow mounts in its own overlay and won't clash with your static one.
+
 ## API
 
 `scrollArrow(options)` / `new ScrollArrow(options)` → instance with
