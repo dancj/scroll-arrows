@@ -7,6 +7,7 @@ import {
   startTangent,
   unitNormal,
   routeOffset,
+  isDegenerateRect,
   type DocRect,
   type Box,
 } from '../src/geometry';
@@ -14,6 +15,35 @@ import {
 const A: DocRect = { left: 0, top: 0, width: 100, height: 100 };
 const RIGHT: DocRect = { left: 300, top: 0, width: 100, height: 100 };
 const BELOW: DocRect = { left: 0, top: 300, width: 100, height: 100 };
+
+describe('isDegenerateRect', () => {
+  it('is true for a display:none anchor (zero on both axes)', () => {
+    expect(isDegenerateRect({ left: 0, top: 0, width: 0, height: 0 })).toBe(
+      true,
+    );
+  });
+
+  it('is true when either axis is collapsed', () => {
+    expect(isDegenerateRect({ left: 0, top: 0, width: 100, height: 0 })).toBe(
+      true,
+    );
+    expect(isDegenerateRect({ left: 0, top: 0, width: 0, height: 50 })).toBe(
+      true,
+    );
+  });
+
+  it('is true for a negative dimension', () => {
+    expect(isDegenerateRect({ left: 0, top: 0, width: -1, height: 10 })).toBe(
+      true,
+    );
+  });
+
+  it('is false for a normal laid-out rect', () => {
+    expect(isDegenerateRect({ left: 0, top: 0, width: 100, height: 40 })).toBe(
+      false,
+    );
+  });
+});
 
 describe('resolveEndpoints', () => {
   it('auto-picks the right edge of A and left edge of a box to its right', () => {

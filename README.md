@@ -57,6 +57,22 @@ arrow.destroy();
 - **Obstacle routing** — pass `avoid` (an element or array) and the curve bows
   around them with an `avoidPadding` gap instead of cutting through. Single-bend
   router: it clears the worst blocker, not a full path-finder.
+- **Hidden anchors (tabs / accordions)** — an anchor inside a `display:none`
+  container has no box, so the arrow can't be drawn yet. Instead of rendering a
+  collapsed/garbage line, it draws nothing and **auto-redraws the moment the
+  anchor is revealed** (via `IntersectionObserver`). For full control — or for
+  engines without `IntersectionObserver` — call `arrow.refresh()` from your
+  tab/accordion show handler:
+
+  ```ts
+  const arrow = scrollArrow({ start: '#a', end: '#tab-2-target' });
+
+  tabButton.addEventListener('click', () => {
+    showTabPanel(2); // your code reveals the panel
+    arrow.refresh(); // recompute now that the anchor has a box
+  });
+  ```
+
 - **Manual mode** — `scroll: false` + `setProgress(0..1)` to drive it yourself
   (e.g. from GSAP/Motion).
 - **Reduced motion** — arrows auto-respect `prefers-reduced-motion: reduce`,

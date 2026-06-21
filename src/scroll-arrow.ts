@@ -3,6 +3,7 @@ import type { RoughSVG } from 'roughjs/bin/svg';
 import type { ScrollArrowOptions, ElementRef, Socket } from './types';
 import {
   docRect,
+  isDegenerateRect,
   resolveEndpoints,
   buildPath,
   arrowHeadPath,
@@ -12,6 +13,7 @@ import {
   routeOffset,
   type Endpoints,
   type Box,
+  type DocRect,
 } from './geometry';
 import {
   scrollProgress,
@@ -69,6 +71,11 @@ export class ScrollArrow {
   private progress: number;
 
   private ro?: ResizeObserver;
+  /**
+   * Lazily armed only while an anchor is hidden/zero-size, so the common path
+   * (both anchors visible) wires no extra observer. Fires render() on reveal.
+   */
+  private revealObs?: IntersectionObserver;
   private rafId = 0;
   private destroyed = false;
   /** Render static + fully drawn: user prefers reduced motion and we honor it. */
@@ -120,6 +127,7 @@ export class ScrollArrow {
   destroy(): void {
     this.destroyed = true;
     this.ro?.disconnect();
+    this.teardownReveal();
     window.removeEventListener('scroll', this.onScroll, true);
     window.removeEventListener('resize', this.onScroll);
     cancelAnimationFrame(this.rafId);
@@ -149,9 +157,7 @@ export class ScrollArrow {
     return list.map(resolve).filter((el): el is Element => el !== null);
   }
 
-  private computeEndpoints(): Endpoints {
-    const sr = docRect(this.refs.start);
-    const er = docRect(this.refs.end);
+  private computeEndpoints(sr: DocRect, er: DocRect): Endpoints {
     const ss: Socket = this.opts.startSocket ?? 'auto';
     const es: Socket = this.opts.endSocket ?? 'auto';
     return resolveEndpoints(sr, er, ss, es);
@@ -162,7 +168,19 @@ export class ScrollArrow {
     while (this.group.firstChild) this.group.removeChild(this.group.firstChild);
     this.segments = [];
 
-    const ep = this.computeEndpoints();
+    // A hidden / zero-size anchor (display:none tab panel, collapsed accordion)
+    // yields a degenerate rect that would collapse the arrow into garbage. Skip
+    // the draw, leave the group empty, and arm a reveal observer that redraws as
+    // soon as the anchor gains a real box. See issue #21.
+    const sr = docRect(this.refs.start);
+    const er = docRect(this.refs.end);
+    if (isDegenerateRect(sr) || isDegenerateRect(er)) {
+      this.armReveal();
+      return;
+    }
+    this.teardownReveal();
+
+    const ep = this.computeEndpoints(sr, er);
     const origin = overlayOrigin(this.svg);
     const shift = (e: Endpoints): Endpoints => ({
       start: { x: e.start.x - origin.x, y: e.start.y - origin.y },
@@ -330,6 +348,26 @@ export class ScrollArrow {
       this.labelEl.style.opacity = String(op);
       if (this.labelBgEl) this.labelBgEl.style.opacity = String(op);
     }
+  }
+
+  /**
+   * Watch the anchors for the moment a hidden one becomes laid out, then redraw.
+   * IntersectionObserver fires when a previously `display:none` element gains a
+   * box — a transition ResizeObserver does not reliably report. Armed lazily and
+   * idempotently; torn down by the next successful render(). Guarded so it no-ops
+   * in environments without IntersectionObserver (older engines, some SSR/jsdom).
+   */
+  private armReveal(): void {
+    if (this.revealObs || this.destroyed) return;
+    if (typeof IntersectionObserver === 'undefined') return;
+    this.revealObs = new IntersectionObserver(() => this.render());
+    this.revealObs.observe(this.refs.start);
+    this.revealObs.observe(this.refs.end);
+  }
+
+  private teardownReveal(): void {
+    this.revealObs?.disconnect();
+    this.revealObs = undefined;
   }
 
   private bind(): void {

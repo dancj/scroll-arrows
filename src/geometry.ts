@@ -25,6 +25,17 @@ export function docRect(el: Element): DocRect {
   };
 }
 
+/**
+ * A rect is degenerate when either axis has no extent — the case you get from a
+ * `display:none` anchor (a hidden tab panel, a collapsed accordion). Such a rect
+ * collapses both endpoints toward a point and yields a garbage arrow, so callers
+ * should skip drawing until the anchor gains a real box. `<= 0` (not `=== 0`)
+ * also rejects negative/sub-pixel rects from collapsed flex/grid children.
+ */
+export function isDegenerateRect(r: DocRect): boolean {
+  return r.width <= 0 || r.height <= 0;
+}
+
 function center(r: DocRect): Point {
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
 }
