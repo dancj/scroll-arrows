@@ -1,5 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { easeInOutCubic, clamp01, scrollProgress } from '../src/progress';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import {
+  easeInOutCubic,
+  clamp01,
+  scrollProgress,
+  prefersReducedMotion,
+} from '../src/progress';
 import type { DocRect } from '../src/geometry';
 
 describe('clamp01', () => {
@@ -57,5 +62,46 @@ describe('scrollProgress', () => {
     window.scrollY = 500;
     // doc top 1100 -> viewport top 600 -> same 0.5 as above
     expect(scrollProgress(rect(1100), [0.85, 0.35])).toBeCloseTo(0.5);
+  });
+});
+
+describe('prefersReducedMotion', () => {
+  let original: typeof window.matchMedia;
+
+  beforeEach(() => {
+    original = window.matchMedia;
+  });
+
+  afterEach(() => {
+    // jsdom has no matchMedia; restore whatever was there (usually undefined).
+    if (original) {
+      window.matchMedia = original;
+    } else {
+      // @ts-expect-error - clearing the stub back to jsdom's absent state
+      delete window.matchMedia;
+    }
+  });
+
+  it('returns true when matchMedia reports the reduce query matches', () => {
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true }) as never;
+    expect(prefersReducedMotion()).toBe(true);
+  });
+
+  it('returns false when matchMedia reports no match', () => {
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false }) as never;
+    expect(prefersReducedMotion()).toBe(false);
+  });
+
+  it('returns false (no throw) when matchMedia is unavailable', () => {
+    // @ts-expect-error - simulate an environment without matchMedia
+    delete window.matchMedia;
+    expect(prefersReducedMotion()).toBe(false);
+  });
+
+  it('queries the prefers-reduced-motion: reduce media feature', () => {
+    const spy = vi.fn().mockReturnValue({ matches: false });
+    window.matchMedia = spy as never;
+    prefersReducedMotion();
+    expect(spy).toHaveBeenCalledWith('(prefers-reduced-motion: reduce)');
   });
 });

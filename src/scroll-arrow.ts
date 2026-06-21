@@ -3,8 +3,10 @@ import type { RoughSVG } from 'roughjs/bin/svg';
 import type { ScrollArrowOptions, ElementRef, Socket } from './types';
 import {
   docRect,
+  isDegenerateRect,
   resolveEndpoints,
   buildPath,
+  buildElbowPath,
   arrowHeadPath,
   endTangent,
   startTangent,
@@ -12,12 +14,14 @@ import {
   routeOffset,
   type Endpoints,
   type Box,
+  type DocRect,
 } from './geometry';
 import {
   scrollProgress,
   midpointRect,
   easeInOutCubic,
   clamp01,
+  prefersReducedMotion,
 } from './progress';
 import { getOverlay, overlayOrigin, createGroup, createSvgEl } from './overlay';
 import { mapRoughness, deriveSeed } from './roughness';
@@ -68,8 +72,17 @@ export class ScrollArrow {
   private progress: number;
 
   private ro?: ResizeObserver;
+  /**
+   * Lazily armed only while an anchor is hidden/zero-size, so the common path
+   * (both anchors visible) wires no extra observer. Fires render() on reveal.
+   */
+  private revealObs?: IntersectionObserver;
   private rafId = 0;
   private destroyed = false;
+  /** Render static + fully drawn: user prefers reduced motion and we honor it. */
+  private reducedMotion: boolean;
+  /** When false the arrow is hidden and skips all draw/scroll work (no teardown). */
+  private enabled: boolean;
 
   constructor(options: ScrollArrowOptions) {
     this.opts = {
@@ -86,7 +99,10 @@ export class ScrollArrow {
     this.svg = getOverlay(this.container);
     this.rc = rough.svg(this.svg);
     this.svg.appendChild(this.group);
-    this.progress = clamp01(this.opts.progress);
+    this.reducedMotion =
+      this.opts.respectReducedMotion !== false && prefersReducedMotion();
+    // Reduced motion renders the arrow complete and static.
+    this.progress = this.reducedMotion ? 1 : clamp01(this.opts.progress);
 
     this.refs = this.resolveRefs();
     this.stroke =
@@ -94,9 +110,32 @@ export class ScrollArrow {
     this.seed =
       options.seed ?? deriveSeed(refKey(options.start), refKey(options.end));
 
+    this.enabled = this.opts.enabled ?? true;
+    if (!this.enabled) this.group.style.display = 'none';
+
     this.render();
     this.bind();
     this.update();
+  }
+
+  /**
+   * Suspend or restore the arrow without tearing it down. Disabling hides it and
+   * stops all draw/scroll work; enabling shows it and recomputes geometry (so it
+   * reflects any layout change that happened while hidden). Idempotent. Wire it
+   * to `matchMedia` to switch arrows off below a breakpoint.
+   */
+  setEnabled(on: boolean): void {
+    if (on === this.enabled || this.destroyed) return;
+    this.enabled = on;
+    if (on) {
+      this.group.style.display = '';
+      this.render();
+      this.update();
+    } else {
+      this.group.style.display = 'none';
+      cancelAnimationFrame(this.rafId);
+      this.rafId = 0;
+    }
   }
 
   /** Manually set draw progress (0..1). Only meaningful when scroll is false. */
@@ -114,6 +153,7 @@ export class ScrollArrow {
   destroy(): void {
     this.destroyed = true;
     this.ro?.disconnect();
+    this.teardownReveal();
     window.removeEventListener('scroll', this.onScroll, true);
     window.removeEventListener('resize', this.onScroll);
     cancelAnimationFrame(this.rafId);
@@ -143,12 +183,17 @@ export class ScrollArrow {
     return list.map(resolve).filter((el): el is Element => el !== null);
   }
 
-  private computeEndpoints(): Endpoints {
-    const sr = docRect(this.refs.start);
-    const er = docRect(this.refs.end);
+  private computeEndpoints(sr: DocRect, er: DocRect): Endpoints {
     const ss: Socket = this.opts.startSocket ?? 'auto';
     const es: Socket = this.opts.endSocket ?? 'auto';
-    return resolveEndpoints(sr, er, ss, es);
+    return resolveEndpoints(
+      sr,
+      er,
+      ss,
+      es,
+      this.opts.startSocketOffset ?? 0,
+      this.opts.endSocketOffset ?? 0,
+    );
   }
 
   private render(): void {
@@ -156,7 +201,22 @@ export class ScrollArrow {
     while (this.group.firstChild) this.group.removeChild(this.group.firstChild);
     this.segments = [];
 
-    const ep = this.computeEndpoints();
+    // Disabled (e.g. below a breakpoint): stay hidden and empty, no work.
+    if (!this.enabled) return;
+
+    // A hidden / zero-size anchor (display:none tab panel, collapsed accordion)
+    // yields a degenerate rect that would collapse the arrow into garbage. Skip
+    // the draw, leave the group empty, and arm a reveal observer that redraws as
+    // soon as the anchor gains a real box. See issue #21.
+    const sr = docRect(this.refs.start);
+    const er = docRect(this.refs.end);
+    if (isDegenerateRect(sr) || isDegenerateRect(er)) {
+      this.armReveal();
+      return;
+    }
+    this.teardownReveal();
+
+    const ep = this.computeEndpoints(sr, er);
     const origin = overlayOrigin(this.svg);
     const shift = (e: Endpoints): Endpoints => ({
       start: { x: e.start.x - origin.x, y: e.start.y - origin.y },
@@ -175,27 +235,33 @@ export class ScrollArrow {
       this.opts.anchorEnds ?? true,
     );
 
-    // Route around any obstacles, then build the line.
-    const obstacles: Box[] = this.resolveAvoid().map((el) => {
-      const dr = docRect(el);
-      return {
-        left: dr.left - origin.x,
-        top: dr.top - origin.y,
-        width: dr.width,
-        height: dr.height,
-      };
-    });
-    const clear = routeOffset(
-      local.start,
-      local.end,
-      obstacles,
-      this.opts.avoidPadding ?? 14,
-    );
-    // A cubic's midpoint only reaches ~0.75x its control-point displacement, so
-    // amplify the requested clearance to make the curve actually clear the box.
-    const BOW = 1.6;
-    const belly = { x: clear.x * BOW, y: clear.y * BOW };
-    const d = buildPath(local, curvature, belly);
+    let d: string;
+    if (this.opts.route === 'elbow') {
+      // Orthogonal connector: ignores obstacle avoidance and curvature.
+      d = buildElbowPath(local);
+    } else {
+      // Route around any obstacles, then build the curve.
+      const obstacles: Box[] = this.resolveAvoid().map((el) => {
+        const dr = docRect(el);
+        return {
+          left: dr.left - origin.x,
+          top: dr.top - origin.y,
+          width: dr.width,
+          height: dr.height,
+        };
+      });
+      const clear = routeOffset(
+        local.start,
+        local.end,
+        obstacles,
+        this.opts.avoidPadding ?? 14,
+      );
+      // A cubic's midpoint only reaches ~0.75x its control-point displacement,
+      // so amplify the requested clearance to make the curve clear the box.
+      const BOW = 1.6;
+      const belly = { x: clear.x * BOW, y: clear.y * BOW };
+      d = buildPath(local, curvature, belly);
+    }
     this.appendDrawable(this.rc.path(d, roughOpts), 'line');
 
     // Arrowheads.
@@ -326,12 +392,34 @@ export class ScrollArrow {
     }
   }
 
+  /**
+   * Watch the anchors for the moment a hidden one becomes laid out, then redraw.
+   * IntersectionObserver fires when a previously `display:none` element gains a
+   * box — a transition ResizeObserver does not reliably report. Armed lazily and
+   * idempotently; torn down by the next successful render(). Guarded so it no-ops
+   * in environments without IntersectionObserver (older engines, some SSR/jsdom).
+   */
+  private armReveal(): void {
+    if (this.revealObs || this.destroyed) return;
+    if (typeof IntersectionObserver === 'undefined') return;
+    this.revealObs = new IntersectionObserver(() => this.render());
+    this.revealObs.observe(this.refs.start);
+    this.revealObs.observe(this.refs.end);
+  }
+
+  private teardownReveal(): void {
+    this.revealObs?.disconnect();
+    this.revealObs = undefined;
+  }
+
   private bind(): void {
     const targets = [this.refs.start, this.refs.end, ...this.resolveAvoid()];
     if (this.refs.target) targets.push(this.refs.target);
     this.ro = new ResizeObserver(() => this.render());
     targets.forEach((t) => this.ro!.observe(t));
-    if (this.opts.scroll !== false) {
+    // Reduced motion behaves like scroll:false — static, no scroll listeners —
+    // but keeps the ResizeObserver above so anchors still track layout.
+    if (this.opts.scroll !== false && !this.reducedMotion) {
       window.addEventListener('scroll', this.onScroll, true);
       window.addEventListener('resize', this.onScroll);
     }
@@ -346,8 +434,8 @@ export class ScrollArrow {
   };
 
   private update(): void {
-    if (this.destroyed) return;
-    if (this.opts.scroll === false) {
+    if (this.destroyed || !this.enabled) return;
+    if (this.opts.scroll === false || this.reducedMotion) {
       this.applyProgress();
       return;
     }

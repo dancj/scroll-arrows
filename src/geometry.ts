@@ -25,22 +25,39 @@ export function docRect(el: Element): DocRect {
   };
 }
 
+/**
+ * A rect is degenerate when either axis has no extent — the case you get from a
+ * `display:none` anchor (a hidden tab panel, a collapsed accordion). Such a rect
+ * collapses both endpoints toward a point and yields a garbage arrow, so callers
+ * should skip drawing until the anchor gains a real box. `<= 0` (not `=== 0`)
+ * also rejects negative/sub-pixel rects from collapsed flex/grid children.
+ */
+export function isDegenerateRect(r: DocRect): boolean {
+  return r.width <= 0 || r.height <= 0;
+}
+
 function center(r: DocRect): Point {
   return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
 }
 
-/** The anchor point on a given edge of a rect. */
-function socketPoint(r: DocRect, side: Socket): Point {
+/**
+ * The anchor point on a given edge of a rect. `offset` slides the point along
+ * the edge as a fraction of the edge length: `0` = centered, `-0.5`/`+0.5` =
+ * the corners (clamped to that range so it stays on the edge). Used to fan out
+ * several arrows that share an edge so they don't stack on one point.
+ */
+function socketPoint(r: DocRect, side: Socket, offset = 0): Point {
   const c = center(r);
+  const o = offset < -0.5 ? -0.5 : offset > 0.5 ? 0.5 : offset;
   switch (side) {
     case 'top':
-      return { x: c.x, y: r.top };
+      return { x: c.x + o * r.width, y: r.top };
     case 'bottom':
-      return { x: c.x, y: r.top + r.height };
+      return { x: c.x + o * r.width, y: r.top + r.height };
     case 'left':
-      return { x: r.left, y: c.y };
+      return { x: r.left, y: c.y + o * r.height };
     case 'right':
-      return { x: r.left + r.width, y: c.y };
+      return { x: r.left + r.width, y: c.y + o * r.height };
     default:
       return c;
   }
@@ -90,12 +107,14 @@ export function resolveEndpoints(
   endRect: DocRect,
   startSocket: Socket,
   endSocket: Socket,
+  startOffset = 0,
+  endOffset = 0,
 ): Endpoints {
   const s = startSocket === 'auto' ? autoSide(startRect, endRect) : startSocket;
   const e = endSocket === 'auto' ? autoSide(endRect, startRect) : endSocket;
   return {
-    start: socketPoint(startRect, s),
-    end: socketPoint(endRect, e),
+    start: socketPoint(startRect, s, startOffset),
+    end: socketPoint(endRect, e, endOffset),
     startNormal: socketNormal(s),
     endNormal: socketNormal(e),
   };
@@ -132,6 +151,48 @@ export function buildPath(
   };
 
   return `M ${r(start.x)} ${r(start.y)} C ${r(c1.x)} ${r(c1.y)} ${r(c2.x)} ${r(c2.y)} ${r(end.x)} ${r(end.y)}`;
+}
+
+/**
+ * Build an orthogonal (right-angle "elbow") `d` string between endpoints — the
+ * classic tree / org-chart bracket. The exit/entry axes follow each socket
+ * normal: same-axis sockets get a Z-bend through the midpoint (a centered
+ * bracket); perpendicular sockets get a single L-corner. Center sockets (no
+ * normal) fall back to the dominant delta axis. rough.js then sketches the
+ * straight segments for the hand-drawn look.
+ */
+export function buildElbowPath(ep: Endpoints): string {
+  const { start: s, end: e, startNormal: sn, endNormal: en } = ep;
+  const dx = e.x - s.x;
+  const dy = e.y - s.y;
+  // Does the path leave/enter on a vertical axis (top/bottom socket)?
+  const startVertical =
+    sn.y !== 0 || (sn.x === 0 && Math.abs(dy) >= Math.abs(dx));
+  const endVertical =
+    en.y !== 0 || (en.x === 0 && Math.abs(dy) >= Math.abs(dx));
+
+  let pts: Point[];
+  if (startVertical && endVertical) {
+    const midY = (s.y + e.y) / 2;
+    pts = [s, { x: s.x, y: midY }, { x: e.x, y: midY }, e];
+  } else if (!startVertical && !endVertical) {
+    const midX = (s.x + e.x) / 2;
+    pts = [s, { x: midX, y: s.y }, { x: midX, y: e.y }, e];
+  } else if (startVertical) {
+    // leave vertically, arrive horizontally → corner under the start
+    pts = [s, { x: s.x, y: e.y }, e];
+  } else {
+    // leave horizontally, arrive vertically → corner over the end
+    pts = [s, { x: e.x, y: s.y }, e];
+  }
+
+  return (
+    `M ${r(pts[0]!.x)} ${r(pts[0]!.y)}` +
+    pts
+      .slice(1)
+      .map((p) => ` L ${r(p.x)} ${r(p.y)}`)
+      .join('')
+  );
 }
 
 /** Axis-aligned box, in the same coordinate space as the endpoints. */

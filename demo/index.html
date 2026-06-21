@@ -106,6 +106,18 @@
         transform: translate(-50%, -50%);
       }
 
+      /* org/family tree: one parent over a row of children */
+      .tree {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 9rem;
+      }
+      .tree .kids {
+        display: flex;
+        gap: 8rem;
+      }
+
       .code {
         margin: 1.6rem auto 0;
         max-width: 440px;
@@ -138,6 +150,33 @@
         background: #000;
         padding: 0 0.3rem;
         border-radius: 4px;
+      }
+
+      /* tab reveal demo */
+      .tabs {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+        margin-bottom: 1.5rem;
+      }
+      .tabs button {
+        background: #2a2f37;
+        color: #cfd6df;
+        border: 1px solid #3a414b;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font: inherit;
+        cursor: pointer;
+      }
+      .tabs button[aria-selected='true'] {
+        background: #1d6b6b;
+        color: #fff;
+      }
+      .panel[hidden] {
+        display: none;
+      }
+      .panel .row {
+        justify-content: space-around;
       }
     </style>
   </head>
@@ -191,10 +230,80 @@
       </div>
     </section>
 
+    <section class="section">
+      <h2>Staggered group · tree reveal</h2>
+      <div class="stage tree">
+        <div class="box brown" id="t-root">root</div>
+        <div class="kids">
+          <div class="box" id="t-a">child A</div>
+          <div class="box" id="t-b">child B</div>
+          <div class="box" id="t-c">child C</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Reduced motion · static fallback</h2>
+      <div class="stage row">
+        <div class="box" id="rm-a">a11y[]</div>
+        <div class="box brown" id="rm-b">drawn</div>
+      </div>
+      <p
+        style="
+          text-align: center;
+          color: #9aa4b2;
+          max-width: 440px;
+          margin: 1rem auto 0;
+        "
+      >
+        Auto-respects <code>prefers-reduced-motion: reduce</code>. With reduced
+        motion on, this arrow renders fully drawn and static instead of
+        animating on scroll. Opt out with
+        <code>respectReducedMotion: false</code>.
+      </p>
+    </section>
+
+    <section class="section">
+      <h2>Hidden anchor · tab reveal</h2>
+      <div class="tabs">
+        <button id="tab-1" aria-selected="true" data-panel="panel-1">
+          Tab 1
+        </button>
+        <button id="tab-2" aria-selected="false" data-panel="panel-2">
+          Tab 2
+        </button>
+      </div>
+      <!-- The start anchor stays visible; only the target panel toggles, so the
+           arrow has both anchors once the target is revealed. -->
+      <div class="stage row">
+        <div class="box" id="hidden-a">source</div>
+        <div class="panel" id="panel-2" hidden>
+          <div class="box brown" id="hidden-b">revealed on Tab 2</div>
+        </div>
+      </div>
+      <p style="text-align: center; color: #9aa4b2">
+        Tab 1 keeps the target in a <code>hidden</code> panel, so nothing draws.
+        Switch to Tab 2 to reveal it — <code>refresh()</code> then snaps the
+        arrow into place.
+      </p>
+    </section>
+
+    <section class="section" id="elbow-demo">
+      <h2>Elbow routing · org chart</h2>
+      <div class="stage tree">
+        <div class="box brown" id="e-root">CEO</div>
+        <div class="kids">
+          <div class="box" id="e-a">eng</div>
+          <div class="box" id="e-b">design</div>
+          <div class="box" id="e-c">ops</div>
+        </div>
+      </div>
+    </section>
+
     <div class="spacer">— fin —</div>
 
     <script type="module">
-      import { scrollArrow } from '../src/index.ts';
+      import { scrollArrow, scrollArrowGroup } from '../src/index.ts';
 
       const PAGE_BG = '#111317';
       const base = {
@@ -248,6 +357,115 @@
         card.className = 'code';
         card.innerHTML = renderCall(opts); // show the meaningful opts, not base noise
         section.appendChild(card);
+      });
+
+      // Staggered group: root → A, B, C drawn in sequence off one trigger.
+      // All three leave the root's bottom edge, so fan them out with
+      // startSocketOffset instead of letting them stack on one point.
+      const groupArrows = [
+        { start: '#t-root', end: '#t-a', startSocketOffset: -0.3 },
+        { start: '#t-root', end: '#t-b', startSocketOffset: 0 },
+        { start: '#t-root', end: '#t-c', startSocketOffset: 0.3 },
+      ];
+      scrollArrowGroup({
+        ...base,
+        arrows: groupArrows.map((a) => ({ ...base, ...a, roughness: 0.5 })),
+        stagger: 1,
+        scroll: { target: '.tree' },
+      });
+
+      const treeSection = document.querySelectorAll('.section')[5];
+      const groupCard = document.createElement('div');
+      groupCard.className = 'code';
+      groupCard.innerHTML = renderGroupCall();
+      treeSection.appendChild(groupCard);
+
+      // Reduced motion: auto-respects the OS setting (default true). Renders
+      // static + fully drawn for visitors who prefer reduced motion.
+      const rmOpts = {
+        start: '#rm-b',
+        end: '#rm-a',
+        roughness: 0.5,
+        respectReducedMotion: true,
+        label: 'a11y',
+      };
+      scrollArrow({ ...base, ...rmOpts });
+
+      const rmSection = document.querySelectorAll('.section')[6];
+      const rmCard = document.createElement('div');
+      rmCard.className = 'code';
+      rmCard.innerHTML = renderCall(rmOpts);
+      rmSection.appendChild(rmCard);
+
+      // Elbow routing: right-angle org-chart brackets off one shared trigger.
+      // Forced bottom/top sockets keep every connector a clean vertical bracket.
+      const elbowArrows = [
+        { start: '#e-root', end: '#e-a' },
+        { start: '#e-root', end: '#e-b' },
+        { start: '#e-root', end: '#e-c' },
+      ];
+      scrollArrowGroup({
+        ...base,
+        arrows: elbowArrows.map((a) => ({
+          ...base,
+          ...a,
+          route: 'elbow',
+          startSocket: 'bottom',
+          endSocket: 'top',
+          roughness: 0.5,
+        })),
+        stagger: 1,
+        scroll: { target: '#elbow-demo' },
+      });
+
+      const elbowSection = document.getElementById('elbow-demo');
+      const elbowCard = document.createElement('div');
+      elbowCard.className = 'code';
+      elbowCard.innerHTML =
+        `<span class="fn">scrollArrowGroup</span>({\n` +
+        `  <span class="k">arrows</span>: [ <span class="s">"#e-root"</span> → A, B, C ],\n` +
+        `  <span class="k">route</span>: <span class="s">"elbow"</span>,\n` +
+        `  <span class="k">startSocket</span>: <span class="s">"bottom"</span>, <span class="k">endSocket</span>: <span class="s">"top"</span>,\n` +
+        `})`;
+      elbowSection.appendChild(elbowCard);
+
+      function renderGroupCall() {
+        const arrows = groupArrows
+          .map(
+            (a) =>
+              `    { <span class="k">start</span>: <span class="s">"${a.start}"</span>, <span class="k">end</span>: <span class="s">"${a.end}"</span> },`,
+          )
+          .join('\n');
+        return (
+          `<span class="fn">scrollArrowGroup</span>({\n` +
+          `  <span class="k">arrows</span>: [\n${arrows}\n  ],\n` +
+          `  <span class="k">stagger</span>: <span class="n">1</span>,\n` +
+          `  <span class="k">scroll</span>: { <span class="k">target</span>: <span class="s">".tree"</span> },\n` +
+          `})`
+        );
+      }
+
+      // Hidden-anchor demo: the arrow targets an element in an initially
+      // hidden tab panel. It draws nothing until revealed, then refresh()
+      // recomputes the geometry once the anchor has a real box.
+      const tabArrow = scrollArrow({
+        ...base,
+        start: '#hidden-a',
+        end: '#hidden-b',
+        roughness: 0.5,
+        scroll: false,
+        progress: 1,
+        label: 'refresh()',
+      });
+      const targetPanel = document.getElementById('panel-2');
+      document.querySelectorAll('.tabs button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document
+            .querySelectorAll('.tabs button')
+            .forEach((b) => b.setAttribute('aria-selected', String(b === btn)));
+          targetPanel.hidden = btn.id !== 'tab-2'; // Tab 2 reveals the target
+          tabArrow.refresh(); // target now has a box — recompute and draw
+        });
       });
 
       // Pretty-print an options object as a highlighted scrollArrow({...}) call.
