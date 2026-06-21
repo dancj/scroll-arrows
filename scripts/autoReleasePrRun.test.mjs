@@ -63,6 +63,36 @@ describe('autoReleasePrRun', () => {
     expect(create.join(' ')).toContain('Release: staging to main (v0.2.0)');
   });
 
+  it('skips when the only merged PR since the tag is a sync-back PR', async () => {
+    // Reproduces the release ⇄ sync cycle: a `chore: sync release` merge to
+    // staging must not manufacture another release PR.
+    const exec = makeExec([
+      ['rev-list --count', '1'], // staging ahead (the sync merge commit)
+      ['tag --list', 'v0.2.0'],
+      ['log -1 --format=%aI', '2026-06-18T00:00:00Z'],
+    ]);
+    const calls = [];
+    const gh = async (...args) => {
+      calls.push(args);
+      if (args[1] === 'list' && args.includes('merged')) {
+        return {
+          stdout: JSON.stringify([
+            {
+              number: 7,
+              title: 'chore: sync release v0.2.0 (changelog + version)',
+              mergedAt: '2026-06-18T01:00:00Z',
+              author: { login: 'github-actions[bot]' },
+            },
+          ]),
+        };
+      }
+      return { stdout: '' };
+    };
+    const res = await autoReleasePrRun({ gh, exec, now, readFile: readPkg });
+    expect(res).toEqual({ skipped: true, reason: 'no-releasable-prs' });
+    expect(calls.find((c) => c[1] === 'create')).toBeUndefined();
+  });
+
   it('updates the existing release PR in place', async () => {
     const exec = makeExec([
       ['rev-list --count', '3'],
