@@ -1,7 +1,15 @@
 name: Tag release and open sync PR
 
+# Fires when the staging→main release PR merges. We trigger on the
+# pull_request `closed` event (not push), because the push event's
+# head_commit.message is just "Merge pull request #N from owner/staging" —
+# GitHub does not append the PR title to the merge commit body, so the old
+# `contains(..., 'Release: staging to main')` guard silently skipped the
+# release. The pull_request payload carries the head ref + merged flag
+# directly, which is reliable.
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches: [main]
   workflow_dispatch: {}
 
@@ -17,10 +25,14 @@ concurrency:
 jobs:
   changelog:
     runs-on: ubuntu-latest
-    if: "${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'Release: staging to main') }}"
+    # Manual dispatch always runs; the PR path runs only for a merged staging→main PR.
+    if: "${{ github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && github.event.pull_request.head.ref == 'staging') }}"
     steps:
       - uses: actions/checkout@v4
         with:
+          # Build from main's tip (the merge commit), not the PR head — the
+          # script's ancestry guard requires HEAD to be a 2-parent merge commit.
+          ref: main
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-node@v4
