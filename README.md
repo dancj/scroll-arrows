@@ -117,6 +117,25 @@ drive the whole group yourself with `group.setProgress(0..1)`; `group.refresh()`
 recomputes every arrow's geometry. The default `scroll.target` is a synthetic
 rect spanning every endpoint, so the group reveals as it scrolls into view.
 
+## Breakpoints / responsive
+
+When a diagram reflows on small screens (absolute overlay → vertical stack), the
+arrows usually should disappear. Use `setEnabled(on)` to suspend and restore an
+arrow **without tearing it down** — disabling hides it and stops all scroll work;
+enabling shows it and recomputes geometry. Wire it to `matchMedia`:
+
+```ts
+const arrow = scrollArrow({ start: '#a', end: '#b' });
+
+const mq = window.matchMedia('(max-width: 30rem)');
+const sync = () => arrow.setEnabled(!mq.matches); // off below 30rem
+sync();
+mq.addEventListener('change', sync);
+```
+
+Pass `enabled: false` to start hidden. `scrollArrowGroup` has the same
+`enabled` option and `setEnabled(on)`, toggling the whole set at once.
+
 ## React
 
 ```tsx
@@ -204,7 +223,8 @@ the runtime arrow mounts in its own overlay and won't clash with your static one
 
 Key options: `start`, `end`, `container`, `roughness`, `stroke`, `strokeWidth`,
 `seed`, `startSocket`, `endSocket`, `curvature`, `head`, `headSize`, `scroll`,
-`speed`, `easing`, `progress`. Full types ship with the package.
+`speed`, `easing`, `progress`, `enabled`. Full types ship with the package.
+`setEnabled(on)` toggles an arrow (and a group) on/off without teardown.
 
 ## Develop
 

@@ -80,6 +80,8 @@ export class ScrollArrow {
   private destroyed = false;
   /** Render static + fully drawn: user prefers reduced motion and we honor it. */
   private reducedMotion: boolean;
+  /** When false the arrow is hidden and skips all draw/scroll work (no teardown). */
+  private enabled: boolean;
 
   constructor(options: ScrollArrowOptions) {
     this.opts = {
@@ -107,9 +109,32 @@ export class ScrollArrow {
     this.seed =
       options.seed ?? deriveSeed(refKey(options.start), refKey(options.end));
 
+    this.enabled = this.opts.enabled ?? true;
+    if (!this.enabled) this.group.style.display = 'none';
+
     this.render();
     this.bind();
     this.update();
+  }
+
+  /**
+   * Suspend or restore the arrow without tearing it down. Disabling hides it and
+   * stops all draw/scroll work; enabling shows it and recomputes geometry (so it
+   * reflects any layout change that happened while hidden). Idempotent. Wire it
+   * to `matchMedia` to switch arrows off below a breakpoint.
+   */
+  setEnabled(on: boolean): void {
+    if (on === this.enabled || this.destroyed) return;
+    this.enabled = on;
+    if (on) {
+      this.group.style.display = '';
+      this.render();
+      this.update();
+    } else {
+      this.group.style.display = 'none';
+      cancelAnimationFrame(this.rafId);
+      this.rafId = 0;
+    }
   }
 
   /** Manually set draw progress (0..1). Only meaningful when scroll is false. */
@@ -167,6 +192,9 @@ export class ScrollArrow {
     // Clear previous draw.
     while (this.group.firstChild) this.group.removeChild(this.group.firstChild);
     this.segments = [];
+
+    // Disabled (e.g. below a breakpoint): stay hidden and empty, no work.
+    if (!this.enabled) return;
 
     // A hidden / zero-size anchor (display:none tab panel, collapsed accordion)
     // yields a degenerate rect that would collapse the arrow into garbage. Skip
@@ -392,7 +420,7 @@ export class ScrollArrow {
   };
 
   private update(): void {
-    if (this.destroyed) return;
+    if (this.destroyed || !this.enabled) return;
     if (this.opts.scroll === false || this.reducedMotion) {
       this.applyProgress();
       return;

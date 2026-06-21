@@ -33,6 +33,8 @@ export class ScrollArrowGroup {
   private destroyed = false;
   /** Render every arrow static + fully drawn when reduced motion is honored. */
   private reducedMotion: boolean;
+  /** When false every arrow is hidden and the group does no scroll work. */
+  private enabled: boolean;
 
   constructor(options: ScrollArrowGroupOptions) {
     if (!options.arrows || options.arrows.length === 0) {
@@ -46,10 +48,11 @@ export class ScrollArrowGroup {
     };
     this.reducedMotion =
       this.opts.respectReducedMotion !== false && prefersReducedMotion();
+    this.enabled = this.opts.enabled ?? true;
 
     // Each arrow is driven by the group, never by its own scroll listener. The
-    // group is the single decision point for reduced motion, so children never
-    // re-detect it themselves.
+    // group is the single decision point for reduced motion and enabled state,
+    // so children never re-detect either themselves.
     this.arrows = options.arrows.map(
       (a) =>
         new ScrollArrow({
@@ -57,6 +60,7 @@ export class ScrollArrowGroup {
           scroll: false,
           progress: 0,
           respectReducedMotion: false,
+          enabled: this.enabled,
         }),
     );
     this.windows = staggerWindows(this.arrows.length, this.opts.stagger);
@@ -93,6 +97,26 @@ export class ScrollArrowGroup {
     this.update();
   }
 
+  /**
+   * Suspend or restore the whole group without tearing it down. Hides every
+   * arrow and stops scroll work when off; restores and recomputes when on.
+   * Idempotent. Wire to `matchMedia` for breakpoint-aware diagrams.
+   */
+  setEnabled(on: boolean): void {
+    if (on === this.enabled || this.destroyed) return;
+    this.enabled = on;
+    this.arrows.forEach((a) => a.setEnabled(on));
+    if (on) {
+      this.bind();
+      this.update();
+    } else {
+      window.removeEventListener('scroll', this.onScroll, true);
+      window.removeEventListener('resize', this.onScroll);
+      cancelAnimationFrame(this.rafId);
+      this.rafId = 0;
+    }
+  }
+
   destroy(): void {
     this.destroyed = true;
     window.removeEventListener('scroll', this.onScroll, true);
@@ -104,7 +128,8 @@ export class ScrollArrowGroup {
   // --- internals ---------------------------------------------------------
 
   private bind(): void {
-    if (this.opts.scroll === false || this.reducedMotion) return;
+    if (this.opts.scroll === false || this.reducedMotion || !this.enabled)
+      return;
     window.addEventListener('scroll', this.onScroll, true);
     window.addEventListener('resize', this.onScroll);
   }
@@ -118,7 +143,7 @@ export class ScrollArrowGroup {
   };
 
   private update(): void {
-    if (this.destroyed) return;
+    if (this.destroyed || !this.enabled) return;
     if (this.opts.scroll === false || this.reducedMotion) {
       this.distribute();
       return;
