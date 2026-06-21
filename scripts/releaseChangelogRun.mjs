@@ -29,6 +29,7 @@ import { newestVersionTag, computeNextVersion } from './computeVersion.mjs';
 import {
   neutralizeClosingKeywords,
   sanitizeTitle,
+  isReleaseSyncPr,
 } from './releaseCategorize.mjs';
 import {
   renderChangelogEntry,
@@ -104,9 +105,16 @@ export async function releaseChangelogRun({
     PR_LIST_FIELDS,
   ]);
   const sinceMs = Date.parse(since);
-  const prs = allMerged.filter(
-    (p) => p.mergedAt && Date.parse(p.mergedAt) >= sinceMs,
-  );
+  const prs = allMerged
+    .filter((p) => p.mergedAt && Date.parse(p.mergedAt) >= sinceMs)
+    // Exclude the flow's own sync-back PRs from the bump + changelog so release
+    // bookkeeping never influences the version or lists itself as a change.
+    .filter((p) => !isReleaseSyncPr(p));
+
+  // Nothing releasable since the last tag — don't cut an empty release.
+  if (prs.length === 0) {
+    return { skipped: true, reason: 'no-releasable-prs' };
+  }
 
   const version = computeNextVersion(currentVersion, prs);
   const tag = `v${version}`;

@@ -104,6 +104,41 @@ describe('releaseChangelogRun', () => {
     expect(dispatchIdx).toBeLessThan(createIdx);
   });
 
+  it('skips (no tag, no dispatch) when the only PR since the tag is a sync-back PR', async () => {
+    const log = [];
+    const exec = makeExec(
+      [
+        ['log -1 --format=%P', 'p1 p2'], // merge commit
+        ['tag --list', 'v0.2.0'],
+        ['log -1 --format=%aI', '2026-06-18T00:00:00Z'],
+      ],
+      log,
+    );
+    const gh = async (...a) => {
+      log.push(['gh', ...a].join(' '));
+      if (a[1] === 'list') {
+        return {
+          stdout: JSON.stringify([
+            {
+              number: 7,
+              title: 'chore: sync release v0.2.0 (changelog + version)',
+              mergedAt: '2026-06-18T01:00:00Z',
+              author: { login: 'github-actions[bot]' },
+            },
+          ]),
+        };
+      }
+      return { stdout: '' };
+    };
+    const fs = makeFs({ 'package.json': PKG, 'CHANGELOG.md': CHANGELOG });
+    const res = await releaseChangelogRun({ gh, exec, now, ...fs });
+
+    expect(res).toEqual({ skipped: true, reason: 'no-releasable-prs' });
+    expect(log.some((k) => k.includes('workflow run'))).toBe(false);
+    expect(log.some((k) => k.includes('git tag v0.2.0'))).toBe(false);
+    expect(log.some((k) => k.includes('checkout -b'))).toBe(false);
+  });
+
   it('does not dispatch publish when HEAD is not a merge commit', async () => {
     const ghCalls = [];
     const exec = makeExec([['log -1 --format=%P', 'abc123']]); // single parent

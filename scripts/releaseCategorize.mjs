@@ -11,6 +11,11 @@ import { DELIMITER_START, DELIMITER_END } from './buildReleasePrBody.mjs';
 const FEAT_PREFIX = /^feat(\([^)]*\))?!?:/i;
 const FIX_PREFIX = /^fix(\([^)]*\))?!?:/i;
 const DOCS_PREFIX = /^docs(\([^)]*\))?:/i;
+// The bot-authored sync-back PR title, produced by releaseChangelogRun. These
+// carry only release bookkeeping (version bump + changelog) and must never be
+// counted as releasable work — otherwise merging one re-triggers the release
+// flow, producing an endless release ⇄ sync PR cycle.
+const SYNC_RELEASE_TITLE = /^chore: sync release v/i;
 const CLOSING_KEYWORD_LINE = /^\s*(?:Closes|Fixes|Resolves)\s+#(\d+)/gim;
 const CLOSING_KEYWORD_INLINE = /\b(Closes|Fixes|Resolves)\s+#\d+/gi;
 
@@ -23,6 +28,15 @@ export function categorizePr({ title, labels = [] }) {
   if (FIX_PREFIX.test(t)) return 'Fixes';
   if (DOCS_PREFIX.test(t)) return 'Docs';
   return 'Maintenance';
+}
+
+/**
+ * True for the bot's sync-back PR (`chore: sync release vX …`). Used by both
+ * release orchestrators to drop these from the release window so the flow's own
+ * bookkeeping commits never trigger another release.
+ */
+export function isReleaseSyncPr(pr) {
+  return SYNC_RELEASE_TITLE.test(pr?.title ?? '');
 }
 
 export function extractClosesFromBody(body) {

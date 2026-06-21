@@ -1,26 +1,38 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 220" width="640" height="220" role="img" aria-label="A hand-drawn arrow drawing itself">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 220" width="640" height="220" role="img" aria-label="A hand-drawn arrow drawing itself between two elements">
   <style>
-    .ink { fill: none; stroke: #e7e9ee; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-    .shaft { stroke-dasharray: 1400; stroke-dashoffset: 1400; animation: draw-shaft 4s ease-in-out infinite; }
-    .head  { stroke-dasharray: 90;  stroke-dashoffset: 90;  animation: draw-head 4s ease-in-out infinite; }
+    .ink   { fill: none; stroke: #e7e9ee; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    .box   { fill: none; stroke: #e7e9ee; stroke-width: 2; }
+    .label { fill: #e7e9ee; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 16px; }
+    .shaft { stroke-dasharray: 760; stroke-dashoffset: 760; animation: draw-shaft 4s ease-in-out infinite; }
+    .head  { stroke-dasharray: 60;  stroke-dashoffset: 60;  animation: draw-head 4s ease-in-out infinite; }
     @keyframes draw-shaft {
-      0%   { stroke-dashoffset: 1400; }
+      0%   { stroke-dashoffset: 760; }
       45%  { stroke-dashoffset: 0; }
       92%  { stroke-dashoffset: 0; }
-      100% { stroke-dashoffset: 1400; }
+      100% { stroke-dashoffset: 760; }
     }
     @keyframes draw-head {
-      0%   { stroke-dashoffset: 90; }
-      45%  { stroke-dashoffset: 90; }
+      0%   { stroke-dashoffset: 60; }
+      45%  { stroke-dashoffset: 60; }
       62%  { stroke-dashoffset: 0; }
       92%  { stroke-dashoffset: 0; }
-      100% { stroke-dashoffset: 90; }
+      100% { stroke-dashoffset: 60; }
     }
     @media (prefers-reduced-motion: reduce) {
       .shaft, .head { animation: none; stroke-dashoffset: 0; }
     }
   </style>
-  <path class="ink shaft" d="M47.421792751750445 167.00591974564037 C74.4836642260314 155.1203547615423, 150.60222253758818 99.70377858536085, 209.37704180598865 96.87601687780162 C268.1518610743891 94.04825517024238, 336.30942728697863 155.6475697466944, 400.07070836215325 150.039349500285 C463.8319894373279 144.4311292538756, 560.0604093507142 77.48460165754597, 591.9447282570363 63.22669539934537 M48.94021748546194 168.64934073344338 C76.40816327662897 156.4880261567043, 152.8724361508432 98.49437901952136, 211.29479404572677 95.57773127685059 C269.71715194061034 92.66108353417981, 336.00348464905056 156.45639431891507, 399.4743648547633 151.14945427741873 C462.945245060476 145.84251423592238, 559.8888600172861 78.08237774848409, 592.1200752800031 63.73609102787245" />
-  <path class="ink head" d="M592.6864860653877 65.36886233091354 C584.3349758780004 62.42300069326162, 578.7953140681983 61.905432991623876, 555.7209941983223 58.9109472155571 M591.8485403954983 63.29343109726906 C579.1028130455018 61.51345880872011, 565.0938828123808 60.4426632682085, 556.2856045663357 57.21802158951759" />
-  <path class="ink head" d="M591.7722968235612 64.53997012227774 C587.8070819889233 67.93925787795335, 580.8753670557439 74.70828894272447, 566.6861184731126 89.62481561750174 M592.1296079449355 64.30510998442769 C581.7563652024642 73.63115066691488, 572.2179889566303 84.52585053640604, 566.6213051371276 90.6202742882073" />
+
+  <!-- start element -->
+  <rect class="box" x="40" y="82" width="118" height="56" rx="10" />
+  <text class="label" x="99" y="116" text-anchor="middle">#box-a</text>
+
+  <!-- end element -->
+  <rect class="box" x="482" y="82" width="118" height="56" rx="10" />
+  <text class="label" x="541" y="116" text-anchor="middle">#box-b</text>
+
+  <!-- arrow drawing itself between them -->
+  <path class="ink shaft" d="M164 110 C 230 90, 298 152, 358 132 C 408 116, 446 108, 474 112 M165 113 C 231 93, 299 155, 359 135 C 409 119, 447 111, 475 115" />
+  <path class="ink head" d="M476 112 C 468 109, 461 106, 452 100 M476.5 113 C 468 110, 460 107, 451 101" />
+  <path class="ink head" d="M476 114 C 468 117, 461 121, 453 128 M476.5 114.5 C 468 118, 460 122, 452 129" />
 </svg>

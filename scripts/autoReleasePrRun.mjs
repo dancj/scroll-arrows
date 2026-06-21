@@ -16,7 +16,10 @@ import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { aggregateClosesIssues } from './releaseCategorize.mjs';
+import {
+  aggregateClosesIssues,
+  isReleaseSyncPr,
+} from './releaseCategorize.mjs';
 import { renderReleaseBody, injectIntoBody } from './buildReleasePrBody.mjs';
 import { newestVersionTag, computeNextVersion } from './computeVersion.mjs';
 
@@ -81,9 +84,18 @@ export async function autoReleasePrRun({
     PR_LIST_FIELDS,
   ]);
   const sinceMs = Date.parse(since);
-  const prs = allMerged.filter(
-    (p) => p.mergedAt && Date.parse(p.mergedAt) >= sinceMs,
-  );
+  const prs = allMerged
+    .filter((p) => p.mergedAt && Date.parse(p.mergedAt) >= sinceMs)
+    // Drop the flow's own sync-back PRs: a merged `chore: sync release` carries
+    // no releasable change, so counting it would re-open a release PR and spin
+    // the release ⇄ sync cycle indefinitely.
+    .filter((p) => !isReleaseSyncPr(p));
+
+  // 3b. Nothing releasable since the last tag (e.g. only a sync PR merged) —
+  // skip so the sync merge does not manufacture an empty release PR.
+  if (prs.length === 0) {
+    return { skipped: true, reason: 'no-releasable-prs' };
+  }
 
   // 4. Compute proposed version, aggregate Closes refs, render managed block.
   const version = computeNextVersion(currentVersion, prs);
