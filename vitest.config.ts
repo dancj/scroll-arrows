@@ -12,6 +12,7 @@ export default defineConfig({
       // browser to be meaningful; unit coverage targets the pure logic.
       exclude: [
         'src/scroll-arrow.ts',
+        'src/group.ts', // DOM-heavy orchestrator; pure stagger math lives in progress.ts
         'src/overlay.ts',
         'src/react.tsx',
         'src/index.ts', // export barrel + thin factory

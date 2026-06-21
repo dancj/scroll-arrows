@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { staggerWindows, windowProgress } from '../src/group';
+import { staggerWindows, windowProgress } from '../src/progress';
 
 describe('staggerWindows', () => {
   it('returns no windows for a non-positive count', () => {
