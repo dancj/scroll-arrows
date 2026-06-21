@@ -119,6 +119,14 @@ export interface ScrollArrowOptions {
    * regardless of the OS setting. Default true. Evaluated once at construction.
    */
   respectReducedMotion?: boolean;
+
+  /**
+   * Initial enabled state. When `false`, the arrow is created hidden and draws
+   * nothing until `setEnabled(true)` is called. Use with a `matchMedia` listener
+   * to switch arrows off below a breakpoint (where the diagram reflows) without
+   * destroying and rebuilding them. Default true.
+   */
+  enabled?: boolean;
 }
 
 /**
@@ -156,4 +164,11 @@ export interface ScrollArrowGroupOptions {
    * of the OS setting. Default true. Evaluated once at construction.
    */
   respectReducedMotion?: boolean;
+
+  /**
+   * Initial enabled state for the whole group. When `false`, every arrow starts
+   * hidden until `setEnabled(true)`. Pairs with a `matchMedia` listener for
+   * breakpoint-aware diagrams. Default true.
+   */
+  enabled?: boolean;
 }
