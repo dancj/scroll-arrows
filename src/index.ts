@@ -7,6 +7,7 @@ export type {
   Socket,
   ArrowHead,
   ElementRef,
+  LabelPosition,
   Point,
 } from './types';
 export { easeInOutCubic } from './progress';

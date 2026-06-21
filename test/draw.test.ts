@@ -3,6 +3,7 @@ import {
   dashOffsets,
   lineProgress,
   labelOpacity,
+  resolveLabelAt,
   type DrawSegment,
 } from '../src/draw';
 
@@ -90,7 +91,61 @@ describe('labelOpacity', () => {
   });
 
   it('clamps the label position', () => {
-    expect(labelOpacity(1, 2)).toBe(0); // labelAt clamped to 1, pen never past
     expect(labelOpacity(0.5, -1)).toBe(1); // labelAt clamped to 0, pen well past
+  });
+
+  it('shows an end-anchored label by the time drawing completes', () => {
+    // labelAt 1 (or beyond) must reach full opacity at lineProg 1 — the ramp
+    // start is clamped to 1 - fade so the window fits within [0, 1].
+    expect(labelOpacity(1, 1)).toBeCloseTo(1);
+    expect(labelOpacity(1, 2)).toBeCloseTo(1); // clamped to 1, fully drawn -> visible
+    expect(labelOpacity(0.92, 1, 0.08)).toBe(0); // ramp starts at 1 - fade
+    expect(labelOpacity(0.96, 1, 0.08)).toBeCloseTo(0.5); // halfway through
+  });
+});
+
+describe('resolveLabelAt', () => {
+  it('maps keywords to fractions', () => {
+    expect(resolveLabelAt('start')).toBe(0);
+    expect(resolveLabelAt('middle')).toBe(0.5);
+    expect(resolveLabelAt('end')).toBe(1);
+  });
+
+  it('is case- and whitespace-insensitive for keywords', () => {
+    expect(resolveLabelAt(' END ')).toBe(1);
+    expect(resolveLabelAt('Start')).toBe(0);
+  });
+
+  it('parses percentage strings', () => {
+    expect(resolveLabelAt('25%')).toBe(0.25);
+    expect(resolveLabelAt('0%')).toBe(0);
+    expect(resolveLabelAt('100%')).toBe(1);
+    expect(resolveLabelAt('50.5%')).toBeCloseTo(0.505);
+  });
+
+  it('falls back for a bare percent sign', () => {
+    expect(resolveLabelAt(' % ')).toBe(0.5);
+  });
+
+  it('clamps out-of-range percentages', () => {
+    expect(resolveLabelAt('150%')).toBe(1);
+    expect(resolveLabelAt('-10%')).toBe(0);
+  });
+
+  it('passes through and clamps numbers', () => {
+    expect(resolveLabelAt(0.3)).toBe(0.3);
+    expect(resolveLabelAt(2)).toBe(1);
+    expect(resolveLabelAt(-1)).toBe(0);
+  });
+
+  it('falls back to the default for undefined', () => {
+    expect(resolveLabelAt(undefined)).toBe(0.5);
+    expect(resolveLabelAt(undefined, 0.2)).toBe(0.2);
+  });
+
+  it('falls back for malformed input rather than throwing', () => {
+    expect(resolveLabelAt('garbage')).toBe(0.5);
+    expect(resolveLabelAt('abc%')).toBe(0.5);
+    expect(resolveLabelAt(NaN)).toBe(0.5);
   });
 });
