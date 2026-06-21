@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   resolveEndpoints,
   buildPath,
+  buildElbowPath,
   arrowHeadPath,
   endTangent,
   startTangent,
@@ -121,6 +122,46 @@ describe('buildPath', () => {
     const ep = resolveEndpoints(A, RIGHT, 'center', 'center');
     const d = buildPath(ep, 0.5);
     expect(d.startsWith('M 50 50 C')).toBe(true);
+  });
+});
+
+describe('buildElbowPath', () => {
+  it('Z-bends through the mid-Y for a vertical (top/bottom) pair', () => {
+    // start bottom of A (50,100), end top of a box below-and-right (350,300).
+    const belowRight: DocRect = {
+      left: 300,
+      top: 300,
+      width: 100,
+      height: 100,
+    };
+    const ep = resolveEndpoints(A, belowRight, 'bottom', 'top');
+    // mid-Y between 100 and 300 = 200; bracket: down, across, down.
+    expect(buildElbowPath(ep)).toBe('M 50 100 L 50 200 L 350 200 L 350 300');
+  });
+
+  it('Z-bends through the mid-X for a horizontal (left/right) pair', () => {
+    // start right of A (100,50), end left of a box to the right-and-down (300,250).
+    const rightLow: DocRect = { left: 300, top: 200, width: 100, height: 100 };
+    const ep = resolveEndpoints(A, rightLow, 'right', 'left');
+    expect(buildElbowPath(ep)).toBe('M 100 50 L 200 50 L 200 250 L 300 250');
+  });
+
+  it('single L-corner when start is vertical and end is horizontal', () => {
+    // start bottom of A (50,100), end left edge of RIGHT (300,50).
+    const ep = resolveEndpoints(A, RIGHT, 'bottom', 'left');
+    expect(buildElbowPath(ep)).toBe('M 50 100 L 50 50 L 300 50');
+  });
+
+  it('single L-corner when start is horizontal and end is vertical', () => {
+    // start right of A (100,50), end top of BELOW (50,300).
+    const ep = resolveEndpoints(A, BELOW, 'right', 'top');
+    expect(buildElbowPath(ep)).toBe('M 100 50 L 50 50 L 50 300');
+  });
+
+  it('falls back to the dominant delta axis for center sockets', () => {
+    // center→center, BELOW is mostly vertical → treated as a vertical pair.
+    const ep = resolveEndpoints(A, BELOW, 'center', 'center');
+    expect(buildElbowPath(ep).startsWith('M 50 50 L')).toBe(true);
   });
 });
 

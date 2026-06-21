@@ -153,6 +153,48 @@ export function buildPath(
   return `M ${r(start.x)} ${r(start.y)} C ${r(c1.x)} ${r(c1.y)} ${r(c2.x)} ${r(c2.y)} ${r(end.x)} ${r(end.y)}`;
 }
 
+/**
+ * Build an orthogonal (right-angle "elbow") `d` string between endpoints — the
+ * classic tree / org-chart bracket. The exit/entry axes follow each socket
+ * normal: same-axis sockets get a Z-bend through the midpoint (a centered
+ * bracket); perpendicular sockets get a single L-corner. Center sockets (no
+ * normal) fall back to the dominant delta axis. rough.js then sketches the
+ * straight segments for the hand-drawn look.
+ */
+export function buildElbowPath(ep: Endpoints): string {
+  const { start: s, end: e, startNormal: sn, endNormal: en } = ep;
+  const dx = e.x - s.x;
+  const dy = e.y - s.y;
+  // Does the path leave/enter on a vertical axis (top/bottom socket)?
+  const startVertical =
+    sn.y !== 0 || (sn.x === 0 && Math.abs(dy) >= Math.abs(dx));
+  const endVertical =
+    en.y !== 0 || (en.x === 0 && Math.abs(dy) >= Math.abs(dx));
+
+  let pts: Point[];
+  if (startVertical && endVertical) {
+    const midY = (s.y + e.y) / 2;
+    pts = [s, { x: s.x, y: midY }, { x: e.x, y: midY }, e];
+  } else if (!startVertical && !endVertical) {
+    const midX = (s.x + e.x) / 2;
+    pts = [s, { x: midX, y: s.y }, { x: midX, y: e.y }, e];
+  } else if (startVertical) {
+    // leave vertically, arrive horizontally → corner under the start
+    pts = [s, { x: s.x, y: e.y }, e];
+  } else {
+    // leave horizontally, arrive vertically → corner over the end
+    pts = [s, { x: e.x, y: s.y }, e];
+  }
+
+  return (
+    `M ${r(pts[0]!.x)} ${r(pts[0]!.y)}` +
+    pts
+      .slice(1)
+      .map((p) => ` L ${r(p.x)} ${r(p.y)}`)
+      .join('')
+  );
+}
+
 /** Axis-aligned box, in the same coordinate space as the endpoints. */
 export interface Box {
   left: number;
