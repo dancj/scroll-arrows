@@ -112,3 +112,33 @@ export interface ScrollArrowOptions {
   /** Start fully drawn instead of empty. Useful with `scroll:false`. Default 0. */
   progress?: number;
 }
+
+/**
+ * A coordinated set of arrows that draw in a staggered sequence, driven by one
+ * shared scroll trigger (or manually). Each arrow gets a slice of the group's
+ * progress so they reveal as `A then B then C` rather than independently.
+ */
+export interface ScrollArrowGroupOptions {
+  /**
+   * The arrows in the group, in reveal order. Each entry takes the usual
+   * per-arrow options (roughness, stroke, label, ...); the group forces
+   * `scroll: false` on each and drives their progress itself.
+   */
+  arrows: ScrollArrowOptions[];
+  /**
+   * How sequential the reveal is, 0..1. `1` (default) draws each arrow in its
+   * own non-overlapping slice (`A` finishes before `B` starts). `0` draws them
+   * all at once. Values between overlap the slices.
+   */
+  stagger?: number;
+  /**
+   * Shared scroll behavior for the whole group. Pass `false` to drive the group
+   * manually via `setProgress()`. The `target` defaults to a synthetic rect
+   * spanning every arrow's endpoints, so the group reveals as it scrolls in.
+   */
+  scroll?: ScrollOptions | false;
+  /** Multiplier on the group's draw rate. See `ScrollArrowOptions.speed`. Default 1. */
+  speed?: number;
+  /** Easing applied to the group's overall progress before slicing. Default linear. */
+  easing?: (t: number) => number;
+}

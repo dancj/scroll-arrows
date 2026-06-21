@@ -64,6 +64,38 @@ arrow.destroy();
   draw direction, − = right). Fades in as the pen draws through it.
   `labelBackground` masks a gap in the line behind the text (the excalidraw
   look); style via `labelColor` / `font`.
+- **Staggered groups** — `scrollArrowGroup` owns N arrows and reveals them in
+  sequence off one shared trigger (`A then B then C`). `stagger` (0..1) controls
+  overlap: `1` draws each in its own slice, `0` draws them together.
+
+## Groups (staggered reveal)
+
+For diagrams (org/family trees, flows) where a set of arrows should draw in
+order rather than each on its own scroll, use a group. It creates the arrows in
+manual mode and drives their progress as one coordinated reveal.
+
+```ts
+import { scrollArrowGroup } from 'scroll-arrows';
+
+const group = scrollArrowGroup({
+  arrows: [
+    { start: '#a', end: '#b', roughness: 0.6 },
+    { start: '#b', end: '#c', roughness: 0.6 },
+    { start: '#b', end: '#d', roughness: 0.6 },
+  ],
+  stagger: 1, // 0 = all together, 1 = fully sequential (default)
+  scroll: { target: '#diagram' }, // shared trigger; defaults to all endpoints
+});
+
+// later
+group.destroy();
+```
+
+Each entry takes the usual per-arrow options. The group forces `scroll: false`
+on each arrow and slices its own progress across them. Pass `scroll: false` to
+drive the whole group yourself with `group.setProgress(0..1)`; `group.refresh()`
+recomputes every arrow's geometry. The default `scroll.target` is a synthetic
+rect spanning every endpoint, so the group reveals as it scrolls into view.
 
 ## React
 
@@ -87,6 +119,19 @@ function Diagram() {
 `ScrollArrowLine` renders nothing into the React tree — it manages the overlay
 arrow via effect and cleans up on unmount. `useScrollArrow(opts)` is the hook
 form. Pass `deps={[...]}` to re-create when inputs change.
+
+For a staggered group, `ScrollArrowGroupLines` (and the `useScrollArrowGroup`
+hook) take an `arrows` array whose `start`/`end` accept refs:
+
+```tsx
+<ScrollArrowGroupLines
+  arrows={[
+    { start: a, end: b },
+    { start: b, end: c },
+  ]}
+  stagger={1}
+/>
+```
 
 ## Astro
 

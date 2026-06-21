@@ -1,6 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import { ScrollArrow } from './scroll-arrow';
-import type { ScrollArrowOptions } from './types';
+import { ScrollArrowGroup } from './group';
+import type { ScrollArrowOptions, ScrollArrowGroupOptions } from './types';
 
 type Anchor = RefObject<Element | null> | Element | string;
 
@@ -50,4 +51,55 @@ export function ScrollArrowLine(props: ScrollArrowProps): null {
   return null;
 }
 
-export type { ScrollArrowOptions };
+/** One arrow in a group, with React-ref anchors. */
+export interface GroupArrow extends Omit<ScrollArrowOptions, 'start' | 'end'> {
+  start: Anchor;
+  end: Anchor;
+}
+
+export interface UseScrollArrowGroupOptions extends Omit<
+  ScrollArrowGroupOptions,
+  'arrows'
+> {
+  arrows: GroupArrow[];
+  /** Re-create the group when any value here changes. */
+  deps?: unknown[];
+}
+
+/**
+ * Imperatively manage a staggered ScrollArrowGroup tied to element refs.
+ * Returns nothing; the arrows live in an overlay <svg>, not the React tree.
+ */
+export function useScrollArrowGroup(options: UseScrollArrowGroupOptions): void {
+  const groupRef = useRef<ScrollArrowGroup | null>(null);
+  const { arrows, deps = [], ...rest } = options;
+
+  useEffect(() => {
+    const resolved = arrows
+      .map((a) => {
+        const s = read(a.start);
+        const e = read(a.end);
+        if (!s || !e) return null;
+        return { ...a, start: s, end: e } as ScrollArrowOptions;
+      })
+      .filter((a): a is ScrollArrowOptions => a !== null);
+    if (resolved.length === 0) return;
+    const group = new ScrollArrowGroup({ ...rest, arrows: resolved });
+    groupRef.current = group;
+    return () => {
+      group.destroy();
+      groupRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+}
+
+export type ScrollArrowGroupProps = UseScrollArrowGroupOptions;
+
+/** Declarative group form. Renders nothing itself. */
+export function ScrollArrowGroupLines(props: ScrollArrowGroupProps): null {
+  useScrollArrowGroup(props);
+  return null;
+}
+
+export type { ScrollArrowOptions, ScrollArrowGroupOptions };
