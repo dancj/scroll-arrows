@@ -115,10 +115,23 @@ export async function autoReleasePrRun({
   ]);
   const existingPr = existing[0] ?? null;
 
+  const title = `Release: staging to main (v${version})`;
+
   // 6. Upsert.
   if (existingPr) {
+    // Update title too: a later feat PR can raise the bump (patch→minor) after
+    // the PR was first opened, and the title must track the current version —
+    // not freeze at whatever the first merged PR implied.
     const newBody = injectIntoBody(existingPr.body ?? '', managedBlock);
-    await gh('pr', 'edit', String(existingPr.number), '--body', newBody);
+    await gh(
+      'pr',
+      'edit',
+      String(existingPr.number),
+      '--title',
+      title,
+      '--body',
+      newBody,
+    );
     return {
       skipped: false,
       action: 'updated',
@@ -127,7 +140,6 @@ export async function autoReleasePrRun({
     };
   }
 
-  const title = `Release: staging to main (v${version})`;
   const out = await gh(
     'pr',
     'create',

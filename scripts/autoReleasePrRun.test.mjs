@@ -121,5 +121,7 @@ describe('autoReleasePrRun', () => {
       version: '0.2.0',
     });
     expect(edits[0]).toContain('9');
+    // Title is refreshed on upsert so it tracks the current computed version.
+    expect(edits[0].join(' ')).toContain('Release: staging to main (v0.2.0)');
   });
 });
