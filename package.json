@@ -1,6 +1,6 @@
 {
   "name": "scroll-arrows",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Hand-drawn arrows that draw themselves between two elements as you scroll. Roughness goes from clean straight lines to scratchy and curvy.",
   "type": "module",
   "sideEffects": false,

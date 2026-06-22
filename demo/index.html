@@ -178,6 +178,58 @@
       .panel .row {
         justify-content: space-around;
       }
+
+      /* Mobile: the desktop layout uses fixed 150px boxes and large rem gaps
+         (tree/col 9rem, kids 8rem, diag 6rem) that overflow narrow viewports.
+         Shrink boxes, gaps, and padding; arrows recompute via ResizeObserver. */
+      @media (max-width: 640px) {
+        .intro,
+        .spacer {
+          padding: 3rem 1rem;
+        }
+        .section {
+          margin: 38vh auto;
+          padding: 0 1rem;
+        }
+        .stage {
+          padding: 1rem 0;
+          min-height: 200px;
+        }
+        .box {
+          width: auto;
+          min-width: 0;
+          max-width: 46%;
+          padding: 0.85rem 0.75rem;
+          font-size: 0.9rem;
+        }
+        .col {
+          gap: 5rem;
+        }
+        .diag {
+          gap: 3rem;
+        }
+        .tree {
+          gap: 5rem;
+        }
+        .tree .kids {
+          gap: 1rem;
+        }
+        .tree .kids .box {
+          max-width: none;
+          padding: 0.75rem 0.5rem;
+          font-size: 0.8rem;
+        }
+        .avoid {
+          height: 150px;
+        }
+        .code {
+          max-width: 100%;
+          font-size: 12px;
+        }
+        .tabs {
+          flex-wrap: wrap;
+        }
+      }
     </style>
   </head>
   <body>
