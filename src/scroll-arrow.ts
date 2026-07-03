@@ -11,7 +11,7 @@ import {
   endTangent,
   startTangent,
   unitNormal,
-  routeOffset,
+  routeBellies,
   type Endpoints,
   type Box,
   type DocRect,
@@ -264,17 +264,13 @@ export class ScrollArrow {
           height: dr.height,
         };
       });
-      const clear = routeOffset(
-        local.start,
-        local.end,
+      const { b1, b2 } = routeBellies(
+        local,
+        curvature,
         obstacles,
         this.opts.avoidPadding ?? 14,
       );
-      // A cubic's midpoint only reaches ~0.75x its control-point displacement,
-      // so amplify the requested clearance to make the curve clear the box.
-      const BOW = 1.6;
-      const belly = { x: clear.x * BOW, y: clear.y * BOW };
-      d = buildPath(local, curvature, belly);
+      d = buildPath(local, curvature, b1, b2);
     }
     this.lineD = d;
     this.appendDrawable(this.rc.path(d, roughOpts), 'line');

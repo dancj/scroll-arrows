@@ -112,3 +112,50 @@ describe('ScrollArrow with a hidden / zero-size anchor', () => {
     expect(() => new ScrollArrow({ start, end })).not.toThrow();
   });
 });
+
+describe('ScrollArrow avoid routing', () => {
+  // jsdom throws at SVG measurement (getTotalLength), but the line path is
+  // already appended to the overlay by then, and rough.js output is
+  // deterministic for a fixed seed — so the rendered `d` in the DOM is a
+  // faithful witness of the geometry the router produced.
+  function lineD(opts: ConstructorParameters<typeof ScrollArrow>[0]): string {
+    try {
+      new ScrollArrow(opts);
+    } catch {
+      /* jsdom getTotalLength gap — the line path is already in the DOM */
+    }
+    const d = document.querySelector('svg path')?.getAttribute('d') ?? '';
+    document.querySelectorAll('svg').forEach((s) => s.remove());
+    return d;
+  }
+
+  it('bends the curve when an avoided obstacle blocks it', () => {
+    const start = boxed({ left: 0, top: 0, width: 100, height: 40 });
+    const end = boxed({ left: 300, top: 0, width: 100, height: 40 });
+    // Straddles the straight run between the two anchors.
+    const obstacle = boxed({ left: 150, top: 0, width: 40, height: 40 });
+
+    const plain = lineD({ start, end, seed: 7 });
+    const routed = lineD({ start, end, seed: 7, avoid: obstacle });
+    expect(plain).toBeTruthy();
+    expect(routed).toBeTruthy();
+    expect(routed).not.toBe(plain);
+  });
+
+  it('elbow route ignores avoid (existing contract)', () => {
+    const start = boxed({ left: 0, top: 0, width: 100, height: 40 });
+    const end = boxed({ left: 300, top: 0, width: 100, height: 40 });
+    const obstacle = boxed({ left: 150, top: 0, width: 40, height: 40 });
+
+    const plain = lineD({ start, end, seed: 7, route: 'elbow' });
+    const routed = lineD({
+      start,
+      end,
+      seed: 7,
+      route: 'elbow',
+      avoid: obstacle,
+    });
+    expect(plain).toBeTruthy();
+    expect(routed).toBe(plain);
+  });
+});

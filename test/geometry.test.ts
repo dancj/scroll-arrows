@@ -7,7 +7,8 @@ import {
   endTangent,
   startTangent,
   unitNormal,
-  routeOffset,
+  routeBellies,
+  samplePath,
   isDegenerateRect,
   type DocRect,
   type Box,
@@ -214,10 +215,61 @@ describe('unitNormal', () => {
   });
 });
 
-describe('routeOffset', () => {
+// Bare Endpoints without DOM rects: straight chord unless normals are given.
+function eps(
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+  startNormal = { x: 0, y: 0 },
+  endNormal = { x: 0, y: 0 },
+) {
+  return { start, end, startNormal, endNormal };
+}
+
+// True when every sample of the routed curve stays out of every
+// padding-inflated box — the contract routeBellies is meant to deliver.
+function routedCurveClears(
+  ep: ReturnType<typeof eps>,
+  curvature: number,
+  boxes: Box[],
+  padding = 14,
+): boolean {
+  const { b1, b2 } = routeBellies(ep, curvature, boxes, padding);
+  const pts = samplePath(ep, curvature, b1, b2);
+  return pts.every((p) =>
+    boxes.every(
+      (b) =>
+        p.x <= b.left - padding ||
+        p.x >= b.left + b.width + padding ||
+        p.y <= b.top - padding ||
+        p.y >= b.top + b.height + padding,
+    ),
+  );
+}
+
+describe('samplePath', () => {
+  it('first and last samples are exactly the endpoints', () => {
+    const pts = samplePath(eps({ x: 0, y: 0 }, { x: 200, y: 0 }), 0.5);
+    expect(pts[0]).toEqual({ x: 0, y: 0 });
+    expect(pts[pts.length - 1]).toEqual({ x: 200, y: 0 });
+  });
+
+  it('a zero-curvature center-socket cubic samples onto the segment', () => {
+    // center sockets fall back to the straight direction, so with the belly
+    // at zero every sample sits on the chord.
+    const pts = samplePath(eps({ x: 0, y: 0 }, { x: 200, y: 0 }), 0);
+    for (const p of pts) expect(p.y).toBeCloseTo(0);
+  });
+
+  it('scales sample density with chord length for page-scale arrows', () => {
+    const pts = samplePath(eps({ x: 0, y: 0 }, { x: 2400, y: 0 }), 0.5);
+    // ~1 sample per 25px so a padded pill can't fit between samples.
+    expect(pts.length).toBeGreaterThan(90);
+  });
+});
+
+describe('routeBellies', () => {
   // horizontal line from (0,0) to (200,0); left normal points up (-y).
-  const start = { x: 0, y: 0 };
-  const end = { x: 200, y: 0 };
+  const line = eps({ x: 0, y: 0 }, { x: 200, y: 0 });
   const box = (b: Partial<Box>): Box => ({
     left: 0,
     top: 0,
@@ -225,51 +277,104 @@ describe('routeOffset', () => {
     height: 20,
     ...b,
   });
+  const zero = { x: 0, y: 0 };
 
-  it('returns zero when there are no obstacles', () => {
-    expect(routeOffset(start, end, [])).toEqual({ x: 0, y: 0 });
+  it('returns zero bellies when there are no obstacles', () => {
+    expect(routeBellies(line, 0, [])).toEqual({ b1: zero, b2: zero });
   });
 
-  it('returns zero for a box that does not block the line', () => {
-    // centered at (100, 200): far below the line, clears easily.
-    const off = routeOffset(start, end, [box({ left: 90, top: 190 })]);
-    expect(off).toEqual({ x: 0, y: 0 });
+  it('returns zero bellies for a box the curve already clears', () => {
+    // centered at (100, 200): far below the line.
+    const r = routeBellies(line, 0, [box({ left: 90, top: 190 })]);
+    expect(r).toEqual({ b1: zero, b2: zero });
   });
 
-  it('returns zero for a box past the endpoints longitudinally', () => {
-    // centered at (-100, 0): behind the start.
-    const off = routeOffset(start, end, [box({ left: -110, top: -10 })]);
-    expect(off).toEqual({ x: 0, y: 0 });
+  it('returns zero bellies for a box behind the start', () => {
+    const r = routeBellies(line, 0, [box({ left: -110, top: -10 })]);
+    expect(r).toEqual({ b1: zero, b2: zero });
   });
 
-  it('bows the curve perpendicular to clear a box on the line', () => {
-    // box straddling the line at x≈100 (center 100,0), 20x20, padding 14.
-    const off = routeOffset(start, end, [box({ left: 90, top: -10 })], 14);
-    expect(off.x).toBeCloseTo(0); // push is purely perpendicular (vertical)
-    // center signed offset 0 -> push to +1 side along normal (-y): clearance
-    // = radius(10) + padding(14) = 24, along normal (0,-1) -> y = -24.
-    expect(off.y).toBeCloseTo(-24);
+  it('bows the curve clear of a box straddling the chord', () => {
+    const boxes = [box({ left: 90, top: -10 })];
+    const { b1, b2 } = routeBellies(line, 0, boxes);
+    // straddling center -> default push side is up (-y), like the old router.
+    expect(b1.y).toBeLessThan(0);
+    expect(b2.y).toBeLessThan(0);
+    expect(routedCurveClears(line, 0, boxes)).toBe(true);
   });
 
   it('pushes to the side opposite the obstacle center', () => {
-    // box center slightly above the line (negative y -> signed positive on the
-    // up-normal) should push the curve down (+y).
-    const off = routeOffset(start, end, [box({ left: 90, top: -18 })], 14);
-    expect(off.y).toBeGreaterThan(0);
+    const boxes = [box({ left: 90, top: -18 })];
+    const { b1, b2 } = routeBellies(line, 0, boxes);
+    expect(b1.y).toBeGreaterThan(0);
+    expect(b2.y).toBeGreaterThan(0);
+    expect(routedCurveClears(line, 0, boxes)).toBe(true);
   });
 
-  it('picks the worst blocker among several', () => {
-    const off = routeOffset(
-      start,
-      end,
-      [
-        box({ left: 50, top: -6, width: 12, height: 12 }),
-        box({ left: 120, top: -40, width: 60, height: 60 }),
-      ],
-      14,
+  it('detects a box the chord clears but the bowed curve clips (issue #55 mode 1)', () => {
+    // Top sockets bow the curve upward: reach = 200 * (0.3 + 0.4*0.5) = 100,
+    // putting the bow's apex at (100, -75). A box there clears the chord
+    // (y=0) by 65 > padding 14, so the old chord-based router returned zero —
+    // but the rendered bow passes straight through it.
+    const bowed = eps(
+      { x: 0, y: 0 },
+      { x: 200, y: 0 },
+      { x: 0, y: -1 },
+      { x: 0, y: -1 },
     );
-    // the larger, line-crossing box at x=150 dominates.
-    expect(Math.abs(off.y)).toBeGreaterThan(20);
+    const boxes = [box({ left: 90, top: -85 })];
+    const { b1, b2 } = routeBellies(bowed, 0.5, boxes);
+    expect(Math.hypot(b1.x, b1.y) + Math.hypot(b2.x, b2.y)).toBeGreaterThan(0);
+    expect(routedCurveClears(bowed, 0.5, boxes)).toBe(true);
+  });
+
+  it('clears an end-adjacent obstacle by driving the near control point (issue #55 mode 2)', () => {
+    // Box straddling the chord at t ≈ 0.85 — equal-belly routing attenuates
+    // to ~0.4x here and mathematically cannot clear it.
+    const boxes = [box({ left: 160, top: -10 })];
+    const { b1, b2 } = routeBellies(line, 0, boxes);
+    expect(Math.abs(b2.y)).toBeGreaterThan(Math.abs(b1.y));
+    expect(routedCurveClears(line, 0, boxes)).toBe(true);
+  });
+
+  it('clears multiple obstacles on the same side of the chord', () => {
+    const boxes = [
+      box({ left: 50, top: -10, width: 12, height: 12 }),
+      box({ left: 130, top: -10 }),
+    ];
+    expect(routedCurveClears(line, 0, boxes)).toBe(true);
+  });
+
+  it('issue #55 repro: root→branch gutter run stays finite and clear', () => {
+    // Left-aligned tree: root-left socket (60,300), branch-left socket
+    // (96,100), sibling pills extending right from x=96.
+    const gutter = eps(
+      { x: 60, y: 300 },
+      { x: 96, y: 100 },
+      { x: -1, y: 0 },
+      { x: -1, y: 0 },
+    );
+    const pills: Box[] = [
+      { left: 96, top: 136, width: 120, height: 28 },
+      { left: 96, top: 186, width: 120, height: 28 },
+      { left: 96, top: 236, width: 120, height: 28 },
+    ];
+    const { b1, b2 } = routeBellies(gutter, 0.3, pills);
+    for (const v of [b1.x, b1.y, b2.x, b2.y]) expect(Number.isFinite(v)).toBe(true);
+    expect(routedCurveClears(gutter, 0.3, pills)).toBe(true);
+  });
+
+  it('caps displacement and stays finite for a box overlapping the endpoint', () => {
+    // Geometrically unclearable: the curve must terminate inside the padded
+    // box. Best-effort per R5 — finite, capped, terminates.
+    const boxes = [box({ left: 190, top: -10 })];
+    const { b1, b2 } = routeBellies(line, 0, boxes);
+    const cap = 1.5 * 200 + 1e-6;
+    for (const b of [b1, b2]) {
+      expect(Number.isFinite(b.x)).toBe(true);
+      expect(Number.isFinite(b.y)).toBe(true);
+      expect(Math.hypot(b.x, b.y)).toBeLessThanOrEqual(cap);
+    }
   });
 });
 
