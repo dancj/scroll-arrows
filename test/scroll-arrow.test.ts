@@ -114,16 +114,23 @@ describe('ScrollArrow with a hidden / zero-size anchor', () => {
 });
 
 describe('ScrollArrow avoid routing', () => {
-  // jsdom throws at SVG measurement (getTotalLength), but the line path is
-  // already appended to the overlay by then, and rough.js output is
-  // deterministic for a fixed seed — so the rendered `d` in the DOM is a
-  // faithful witness of the geometry the router produced.
+  // jsdom does not implement SVG path geometry; stub it (mirroring
+  // reduced-motion.test.ts) so construction completes and a genuine error
+  // fails the test loudly. rough.js output is deterministic for a fixed
+  // seed, so the rendered `d` in the DOM is a faithful witness of the
+  // geometry the router produced.
+  beforeEach(() => {
+    (
+      SVGElement.prototype as unknown as { getTotalLength: () => number }
+    ).getTotalLength = () => 100;
+  });
+  afterEach(() => {
+    delete (SVGElement.prototype as unknown as { getTotalLength?: unknown })
+      .getTotalLength;
+  });
+
   function lineD(opts: ConstructorParameters<typeof ScrollArrow>[0]): string {
-    try {
-      new ScrollArrow(opts);
-    } catch {
-      /* jsdom getTotalLength gap — the line path is already in the DOM */
-    }
+    new ScrollArrow(opts);
     const d = document.querySelector('svg path')?.getAttribute('d') ?? '';
     document.querySelectorAll('svg').forEach((s) => s.remove());
     return d;

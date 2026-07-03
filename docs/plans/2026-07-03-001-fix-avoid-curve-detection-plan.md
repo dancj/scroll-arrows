@@ -1,12 +1,12 @@
 ---
-title: "fix: Curve-aware avoid detection and t-weighted belly routing"
+title: 'fix: Curve-aware avoid detection and t-weighted belly routing'
 date: 2026-07-03
 type: fix
 artifact_contract: ce-unified-plan/v1
 artifact_readiness: implementation-ready
 execution: code
 product_contract_source: ce-plan-bootstrap
-origin: "GitHub issue #55"
+origin: 'GitHub issue #55'
 ---
 
 # fix: Curve-aware avoid detection and t-weighted belly routing
@@ -19,7 +19,7 @@ The `avoid` router (`routeOffset` in `src/geometry.ts`) tests obstacle clearance
 
 ## Problem Frame
 
-- **Detection/render disagreement.** `routeOffset` measures each obstacle against the chord. The cubic bows out by `reach = dist × (0.3 + 0.4 × curvature)` along the socket normals, plus the belly. A box in the bow's path but clear of the chord is never detected, so no avoidance fires and `avoidPadding` becomes an indirect, double-duty tuning knob (trigger threshold *and* bow magnitude).
+- **Detection/render disagreement.** `routeOffset` measures each obstacle against the chord. The cubic bows out by `reach = dist × (0.3 + 0.4 × curvature)` along the socket normals, plus the belly. A box in the bow's path but clear of the chord is never detected, so no avoidance fires and `avoidPadding` becomes an indirect, double-duty tuning knob (trigger threshold _and_ bow magnitude).
 - **Endpoint attenuation.** Both control points get the same belly, so lateral displacement follows `3t(1-t)·belly` — full authority mid-chord, ~0.4x at t=0.9 even after the 1.6x amplification, zero at the ends. An obstacle projecting near t→1 (arrows converging on a target surrounded by siblings) is uncleatable regardless of `avoidPadding`.
 - **Repro geometry (from issue):** left-aligned tree, root-left socket at x=60, branch-left sockets at x=96, pills extending rightward from x≥96. Root→branch arrows run the empty x=60..96 gutter; every intermediate pill either fails chord detection or registers only end-adjacent where the belly is powerless.
 
@@ -99,6 +99,7 @@ Caller change in `src/scroll-arrow.ts`: delete the `BOW = 1.6` amplification blo
 **Patterns to follow:** existing chord/normal frame math in `routeOffset` (`src/geometry.ts:212-253`); module-local pure helpers with doc comments.
 
 **Test scenarios:**
+
 - Sampling: first/last sample equal start/end exactly; a straight-line cubic (zero normals, zero curvature) samples onto the segment.
 - Detection: a box the chord clears by > padding but the bowed curve enters is reported blocking (issue failure mode 1); a box clear of both chord and curve reports no penetration; a box the curve enters by k px reports depth ≈ k + padding-shortfall along the normal.
 - Long-arrow density: a page-scale arrow (≥ 2000px chord) with a small padded pill on the bow is still detected — sample spacing must not exceed the size of a typical padded obstacle.
@@ -115,11 +116,12 @@ Caller change in `src/scroll-arrow.ts`: delete the `BOW = 1.6` amplification blo
 
 **Files:** `src/geometry.ts`, `test/geometry.test.ts`
 
-**Approach:** Loop per the HTD sketch: sample (U1) → worst penetration → least-norm basis-weight split at t* → clamp → repeat ≤ 4. `buildPath`'s `belly` parameter becomes two per-control displacements (internal-only signature; only `src/scroll-arrow.ts` and tests call it — KTD4). Remove or repurpose the old chord-only `routeOffset`; do not keep dead code.
+**Approach:** Loop per the HTD sketch: sample (U1) → worst penetration → least-norm basis-weight split at t\* → clamp → repeat ≤ 4. `buildPath`'s `belly` parameter becomes two per-control displacements (internal-only signature; only `src/scroll-arrow.ts` and tests call it — KTD4). Remove or repurpose the old chord-only `routeOffset`; do not keep dead code.
 
 **Execution note:** Start with a failing test built from the issue's repro geometry (gutter run below) so the solver is proven against the real-world case, not just synthetic boxes.
 
 **Test scenarios:**
+
 - No obstacles → `{ b1: 0,0, b2: 0,0 }` and `buildPath` output identical to today's zero-belly path.
 - Mid-chord blocker (the existing `routeOffset` happy case): resulting sampled curve clears the padded box; both bellies finite and same sign.
 - Chord-clears-but-curve-clips box (issue mode 1): solver emits a belly and the resulting curve clears; verify by re-sampling the returned curve against the box.
@@ -144,6 +146,7 @@ Caller change in `src/scroll-arrow.ts`: delete the `BOW = 1.6` amplification blo
 **Approach:** In the curved branch (`src/scroll-arrow.ts:257-278`), call the new router with the local endpoints, curvature, resolved obstacle boxes, and `avoidPadding ?? 14`; pass the two bellies into `buildPath`. Delete the BOW block and its comment. Elbow branch untouched.
 
 **Test scenarios:**
+
 - An arrow with `avoid` whose obstacle sits mid-chord renders a `d` whose sampled points clear the padded box (jsdom, mirroring existing scroll-arrow test setup).
 - An arrow without `avoid` renders the same path as before the change.
 - `route: 'elbow'` with `avoid` set still ignores avoidance (existing contract).

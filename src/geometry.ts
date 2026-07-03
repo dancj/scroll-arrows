@@ -170,8 +170,8 @@ export function buildPath(
 /**
  * Flatten the cubic buildPath would emit into uniformly-spaced parameter
  * samples. Sample count scales with chord length (~1 per 25px, min 24,
- * max 100) so a padded obstacle can't slip between consecutive samples on
- * page-scale arrows. First/last samples are exactly the endpoints.
+ * max 400) so sample spacing stays below a padded obstacle's extent for
+ * chords up to ~10000px. First/last samples are exactly the endpoints.
  */
 export function samplePath(
   ep: Endpoints,
@@ -181,7 +181,7 @@ export function samplePath(
 ): Point[] {
   const { start, end } = ep;
   const dist = Math.hypot(end.x - start.x, end.y - start.y) || 1;
-  const n = Math.max(24, Math.min(100, Math.round(dist / 25)));
+  const n = Math.max(24, Math.min(400, Math.round(dist / 25)));
   const { c1, c2 } = cubicControls(ep, curvature, b1, b2);
 
   const pts: Point[] = [];
@@ -279,12 +279,24 @@ export function routeBellies(
   const b2: Point = { x: 0, y: 0 };
   if (!obstacles.length) return { b1, b2 };
 
-  const dx = ep.end.x - ep.start.x;
-  const dy = ep.end.y - ep.start.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const n = { x: dy / len, y: -dx / len }; // left-hand normal: the push axis
+  const len = Math.hypot(ep.end.x - ep.start.x, ep.end.y - ep.start.y) || 1;
+  const n = unitNormal(ep.start, ep.end); // left-hand normal: the push axis
   const cap = 1.5 * len; // best-effort ceiling for unclearable geometry
   const MAX_ITER = 4;
+
+  // Per-obstacle geometry never changes between iterations — hoist it out of
+  // the resample loop. `clearance` folds the box half-extent projected onto
+  // the push axis plus the padding.
+  const obs = obstacles.map((b) => ({
+    cx: b.left + b.width / 2,
+    cy: b.top + b.height / 2,
+    minX: b.left - padding,
+    maxX: b.left + b.width + padding,
+    minY: b.top - padding,
+    maxY: b.top + b.height + padding,
+    clearance:
+      Math.abs((b.width / 2) * n.x) + Math.abs((b.height / 2) * n.y) + padding,
+  }));
 
   for (let iter = 0; iter < MAX_ITER; iter++) {
     const pts = samplePath(ep, curvature, b1, b2);
@@ -296,23 +308,13 @@ export function routeBellies(
     let worstDepth = 0;
     let worstT = 0;
     let worstSign = 1;
-    for (const b of obstacles) {
-      const cx = b.left + b.width / 2;
-      const cy = b.top + b.height / 2;
-      const radius =
-        Math.abs((b.width / 2) * n.x) + Math.abs((b.height / 2) * n.y);
-      const clearance = radius + padding;
+    for (const o of obs) {
       for (let i = 1; i < last; i++) {
         const p = pts[i]!;
-        if (
-          p.x <= b.left - padding ||
-          p.x >= b.left + b.width + padding ||
-          p.y <= b.top - padding ||
-          p.y >= b.top + b.height + padding
-        )
+        if (p.x <= o.minX || p.x >= o.maxX || p.y <= o.minY || p.y >= o.maxY)
           continue; // sample outside the padded box
-        const s = (p.x - cx) * n.x + (p.y - cy) * n.y;
-        const depth = clearance - Math.abs(s);
+        const s = (p.x - o.cx) * n.x + (p.y - o.cy) * n.y;
+        const depth = o.clearance - Math.abs(s);
         if (depth > worstDepth) {
           worstDepth = depth;
           worstT = i / last;
@@ -324,7 +326,7 @@ export function routeBellies(
 
     // Least-norm split of the correction across b1/b2 by basis weight at t*,
     // with t* clamped to the interior so the weights can't vanish (endpoint
-    // singularity guard — see plan KTD2).
+    // singularity guard).
     const t = Math.min(0.95, Math.max(0.05, worstT));
     const w1 = 3 * t * (1 - t) * (1 - t);
     const w2 = 3 * t * t * (1 - t);
@@ -335,7 +337,8 @@ export function routeBellies(
     b2.x += n.x * k * w2;
     b2.y += n.y * k * w2;
 
-    // ponytail: magnitude cap, not a solver — unclearable geometry exits here.
+    // Magnitude cap only, not a full solver — geometry no single cubic can
+    // clear exits here as best-effort.
     for (const b of [b1, b2]) {
       const m = Math.hypot(b.x, b.y);
       if (m > cap) {

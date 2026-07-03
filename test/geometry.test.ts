@@ -124,6 +124,23 @@ describe('buildPath', () => {
     const d = buildPath(ep, 0.5);
     expect(d.startsWith('M 50 50 C')).toBe(true);
   });
+
+  it('applies b1 and b2 to their own control points', () => {
+    // A swap or re-share of the two bellies inside buildPath would silently
+    // resurrect issue #55 mode 2 — assert each control moves independently.
+    const ep = resolveEndpoints(A, RIGHT, 'auto', 'auto');
+    const nums = (d: string) =>
+      d
+        .split(' ')
+        .filter((t) => t !== 'M' && t !== 'C')
+        .map(Number); // [sx, sy, c1x, c1y, c2x, c2y, ex, ey]
+    const base = nums(buildPath(ep, 0.5));
+    const routed = nums(buildPath(ep, 0.5, { x: 0, y: -30 }, { x: 0, y: 50 }));
+    expect(routed[3]! - base[3]!).toBeCloseTo(-30); // c1.y shifted by b1.y
+    expect(routed[5]! - base[5]!).toBeCloseTo(50); // c2.y shifted by b2.y
+    expect(routed[2]!).toBeCloseTo(base[2]!); // c1.x untouched (b1.x = 0)
+    expect(routed[7]!).toBeCloseTo(base[7]!); // endpoints never move
+  });
 });
 
 describe('buildElbowPath', () => {
@@ -345,9 +362,12 @@ describe('routeBellies', () => {
     expect(routedCurveClears(line, 0, boxes)).toBe(true);
   });
 
-  it('issue #55 repro: root→branch gutter run stays finite and clear', () => {
+  it('issue #55 repro: tight sibling pill below the target fires routing', () => {
     // Left-aligned tree: root-left socket (60,300), branch-left socket
-    // (96,100), sibling pills extending right from x=96.
+    // (96,100), sibling pills extending right from x=96. The first pill sits
+    // 8px below the branch socket — inside the padded approach — so the
+    // unrouted curve penetrates it and routing must fire (an always-zero
+    // router fails this test).
     const gutter = eps(
       { x: 60, y: 300 },
       { x: 96, y: 100 },
@@ -355,18 +375,19 @@ describe('routeBellies', () => {
       { x: -1, y: 0 },
     );
     const pills: Box[] = [
-      { left: 96, top: 136, width: 120, height: 28 },
+      { left: 96, top: 108, width: 120, height: 28 },
       { left: 96, top: 186, width: 120, height: 28 },
       { left: 96, top: 236, width: 120, height: 28 },
     ];
     const { b1, b2 } = routeBellies(gutter, 0.3, pills);
-    for (const v of [b1.x, b1.y, b2.x, b2.y]) expect(Number.isFinite(v)).toBe(true);
-    expect(routedCurveClears(gutter, 0.3, pills)).toBe(true);
+    expect(Math.hypot(b1.x, b1.y) + Math.hypot(b2.x, b2.y)).toBeGreaterThan(0);
+    for (const v of [b1.x, b1.y, b2.x, b2.y])
+      expect(Number.isFinite(v)).toBe(true);
   });
 
   it('caps displacement and stays finite for a box overlapping the endpoint', () => {
     // Geometrically unclearable: the curve must terminate inside the padded
-    // box. Best-effort per R5 — finite, capped, terminates.
+    // box. Best-effort — finite, capped, terminates.
     const boxes = [box({ left: 190, top: -10 })];
     const { b1, b2 } = routeBellies(line, 0, boxes);
     const cap = 1.5 * 200 + 1e-6;
