@@ -121,16 +121,18 @@ export function resolveEndpoints(
 }
 
 /**
- * Build a cubic-bezier `d` string between endpoints. Control points are pushed
- * out along each socket normal so the curve leaves/enters edges cleanly.
- * `curvature` (0..~1) scales how far the controls bow out. `belly` is an extra
- * displacement (e.g. from obstacle routing) added to both control points.
+ * Control points of the cubic between endpoints. Pushed out along each socket
+ * normal so the curve leaves/enters edges cleanly; `curvature` (0..~1) scales
+ * how far they bow out. `b1`/`b2` are extra per-control displacements from
+ * obstacle routing. Shared by buildPath and samplePath so detection and
+ * rendering agree on the exact same curve.
  */
-export function buildPath(
+function cubicControls(
   ep: Endpoints,
   curvature: number,
-  belly: Point = { x: 0, y: 0 },
-): string {
+  b1: Point,
+  b2: Point,
+): { c1: Point; c2: Point } {
   const { start, end, startNormal, endNormal } = ep;
   const dx = end.x - start.x;
   const dy = end.y - start.y;
@@ -141,16 +143,64 @@ export function buildPath(
   const sn = startNormal.x || startNormal.y ? startNormal : unit(dx, dy);
   const en = endNormal.x || endNormal.y ? endNormal : unit(-dx, -dy);
 
-  const c1 = {
-    x: start.x + sn.x * reach + belly.x,
-    y: start.y + sn.y * reach + belly.y,
+  return {
+    c1: { x: start.x + sn.x * reach + b1.x, y: start.y + sn.y * reach + b1.y },
+    c2: { x: end.x + en.x * reach + b2.x, y: end.y + en.y * reach + b2.y },
   };
-  const c2 = {
-    x: end.x + en.x * reach + belly.x,
-    y: end.y + en.y * reach + belly.y,
-  };
+}
 
+const ZERO: Point = { x: 0, y: 0 };
+
+/**
+ * Build a cubic-bezier `d` string between endpoints. `b1`/`b2` displace the
+ * start-side and end-side control points independently (obstacle routing
+ * pushes the control nearest the blocker hardest).
+ */
+export function buildPath(
+  ep: Endpoints,
+  curvature: number,
+  b1: Point = ZERO,
+  b2: Point = ZERO,
+): string {
+  const { start, end } = ep;
+  const { c1, c2 } = cubicControls(ep, curvature, b1, b2);
   return `M ${r(start.x)} ${r(start.y)} C ${r(c1.x)} ${r(c1.y)} ${r(c2.x)} ${r(c2.y)} ${r(end.x)} ${r(end.y)}`;
+}
+
+/**
+ * Flatten the cubic buildPath would emit into uniformly-spaced parameter
+ * samples. Sample count scales with chord length (~1 per 25px, min 24,
+ * max 400) so sample spacing stays below a padded obstacle's extent for
+ * chords up to ~10000px. First/last samples are exactly the endpoints.
+ */
+export function samplePath(
+  ep: Endpoints,
+  curvature: number,
+  b1: Point = ZERO,
+  b2: Point = ZERO,
+): Point[] {
+  const { start, end } = ep;
+  const dist = Math.hypot(end.x - start.x, end.y - start.y) || 1;
+  const n = Math.max(24, Math.min(400, Math.round(dist / 25)));
+  const { c1, c2 } = cubicControls(ep, curvature, b1, b2);
+
+  const pts: Point[] = [];
+  for (let i = 0; i <= n; i++) {
+    const t = i / n;
+    const u = 1 - t;
+    const w0 = u * u * u;
+    const w1 = 3 * t * u * u;
+    const w2 = 3 * t * t * u;
+    const w3 = t * t * t;
+    pts.push({
+      x: w0 * start.x + w1 * c1.x + w2 * c2.x + w3 * end.x,
+      y: w0 * start.y + w1 * c1.y + w2 * c2.y + w3 * end.y,
+    });
+  }
+  // Pin the ends exactly (float noise from the weight sums).
+  pts[0] = { x: start.x, y: start.y };
+  pts[n] = { x: end.x, y: end.y };
+  return pts;
 }
 
 /**
@@ -203,53 +253,101 @@ export interface Box {
   height: number;
 }
 
+export interface RouteBellies {
+  b1: Point;
+  b2: Point;
+}
+
 /**
- * Lateral displacement to bow the curve around blocking boxes. Returns the
- * dominant push (perpendicular to the start→end line) needed to clear the
- * worst obstacle; {0,0} when nothing blocks. A pragmatic single-bend router —
- * not a full path-finder.
+ * Per-control-point displacements to bow the rendered curve clear of blocking
+ * boxes. Detection runs against samples of the actual cubic (not the straight
+ * chord), so a box the chord clears but the bow clips is still caught. The
+ * correction for the worst penetration is split across the two control points
+ * by their Bézier basis weights at the blocker's parameter, so end-adjacent
+ * obstacles push the near control hard instead of bowing the middle. Iterates
+ * apply → resample → recheck until clear (or a bounded best-effort cap for
+ * geometry no single cubic can clear). Still a pragmatic single-cubic router,
+ * not a path-finder.
  */
-export function routeOffset(
-  start: Point,
-  end: Point,
+export function routeBellies(
+  ep: Endpoints,
+  curvature: number,
   obstacles: Box[],
   padding = 14,
-): Point {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const t = { x: dx / len, y: dy / len };
-  const n = { x: dy / len, y: -dx / len }; // left-hand normal
+): RouteBellies {
+  const b1: Point = { x: 0, y: 0 };
+  const b2: Point = { x: 0, y: 0 };
+  if (!obstacles.length) return { b1, b2 };
 
-  let best: Point = { x: 0, y: 0 };
-  let bestMag = 0;
+  const len = Math.hypot(ep.end.x - ep.start.x, ep.end.y - ep.start.y) || 1;
+  const n = unitNormal(ep.start, ep.end); // left-hand normal: the push axis
+  const cap = 1.5 * len; // best-effort ceiling for unclearable geometry
+  const MAX_ITER = 4;
 
-  for (const b of obstacles) {
-    const cx = b.left + b.width / 2;
-    const cy = b.top + b.height / 2;
-    const relx = cx - start.x;
-    const rely = cy - start.y;
+  // Per-obstacle geometry never changes between iterations — hoist it out of
+  // the resample loop. `clearance` folds the box half-extent projected onto
+  // the push axis plus the padding.
+  const obs = obstacles.map((b) => ({
+    cx: b.left + b.width / 2,
+    cy: b.top + b.height / 2,
+    minX: b.left - padding,
+    maxX: b.left + b.width + padding,
+    minY: b.top - padding,
+    maxY: b.top + b.height + padding,
+    clearance:
+      Math.abs((b.width / 2) * n.x) + Math.abs((b.height / 2) * n.y) + padding,
+  }));
 
-    // Longitudinal position along the line, 0..1 — ignore boxes off the ends.
-    const u = (relx * t.x + rely * t.y) / len;
-    if (u < 0 || u > 1) continue;
+  for (let iter = 0; iter < MAX_ITER; iter++) {
+    const pts = samplePath(ep, curvature, b1, b2);
+    const last = pts.length - 1;
 
-    const signed = relx * n.x + rely * n.y; // perpendicular position of center
-    // Box half-extent projected onto the normal axis.
-    const radius =
-      Math.abs((b.width / 2) * n.x) + Math.abs((b.height / 2) * n.y);
-    const clearance = radius + padding;
-    if (Math.abs(signed) >= clearance) continue; // line already clears it
+    // Worst penetration across all obstacles × interior samples. The exact
+    // endpoint samples are excluded: they sit on the anchors, which no belly
+    // can move — including them would divide by vanishing basis weights.
+    let worstDepth = 0;
+    let worstT = 0;
+    let worstSign = 1;
+    for (const o of obs) {
+      for (let i = 1; i < last; i++) {
+        const p = pts[i]!;
+        if (p.x <= o.minX || p.x >= o.maxX || p.y <= o.minY || p.y >= o.maxY)
+          continue; // sample outside the padded box
+        const s = (p.x - o.cx) * n.x + (p.y - o.cy) * n.y;
+        const depth = o.clearance - Math.abs(s);
+        if (depth > worstDepth) {
+          worstDepth = depth;
+          worstT = i / last;
+          worstSign = s >= 0 ? 1 : -1; // push further out the side it's on
+        }
+      }
+    }
+    if (worstDepth <= 0) break; // curve clears everything
 
-    // Bow to the side opposite the obstacle center, just far enough to clear.
-    const sign = signed > 0 ? -1 : 1;
-    const offset = signed + sign * clearance;
-    if (Math.abs(offset) > bestMag) {
-      bestMag = Math.abs(offset);
-      best = { x: n.x * offset, y: n.y * offset };
+    // Least-norm split of the correction across b1/b2 by basis weight at t*,
+    // with t* clamped to the interior so the weights can't vanish (endpoint
+    // singularity guard).
+    const t = Math.min(0.95, Math.max(0.05, worstT));
+    const w1 = 3 * t * (1 - t) * (1 - t);
+    const w2 = 3 * t * t * (1 - t);
+    // +2px overshoot so float noise doesn't leave a sample kissing the box.
+    const k = ((worstDepth + 2) * worstSign) / (w1 * w1 + w2 * w2);
+    b1.x += n.x * k * w1;
+    b1.y += n.y * k * w1;
+    b2.x += n.x * k * w2;
+    b2.y += n.y * k * w2;
+
+    // Magnitude cap only, not a full solver — geometry no single cubic can
+    // clear exits here as best-effort.
+    for (const b of [b1, b2]) {
+      const m = Math.hypot(b.x, b.y);
+      if (m > cap) {
+        b.x = (b.x / m) * cap;
+        b.y = (b.y / m) * cap;
+      }
     }
   }
-  return best;
+  return { b1, b2 };
 }
 
 /** Two short strokes forming an arrowhead at `tip`, opening along `dir`. */
