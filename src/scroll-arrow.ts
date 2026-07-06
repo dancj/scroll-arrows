@@ -255,9 +255,11 @@ export class ScrollArrow {
     // heads themselves stay anchored at the true socket points below.
     const head = this.opts.head;
     const size = this.opts.headSize;
+    const hasStartHead = head === 'start' || head === 'both';
+    const hasEndHead = head === 'end' || head === 'both';
     const inset = headBaseInset(size);
-    const startInset = head === 'start' || head === 'both' ? inset : 0;
-    const endInset = head === 'end' || head === 'both' ? inset : 0;
+    const startInset = hasStartHead ? inset : 0;
+    const endInset = hasEndHead ? inset : 0;
 
     let d: string;
     if (this.opts.route === 'elbow') {
@@ -288,14 +290,14 @@ export class ScrollArrow {
     this.appendDrawable(this.rc.path(d, roughOpts), 'line');
 
     // Arrowheads, anchored at the true socket points.
-    if (head === 'end' || head === 'both') {
+    if (hasEndHead) {
       const dir = endTangent(local);
       this.appendDrawable(
         this.rc.path(arrowHeadPath(local.end, dir, size), roughOpts),
         'head',
       );
     }
-    if (head === 'start' || head === 'both') {
+    if (hasStartHead) {
       const dir = startTangent(local);
       this.appendDrawable(
         this.rc.path(arrowHeadPath(local.start, dir, size), roughOpts),

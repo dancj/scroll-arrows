@@ -24,6 +24,16 @@ function boxed(rect: Partial<DOMRect>): HTMLElement {
   return el;
 }
 
+/** Render an arrow, return every path's `d` (line stroke(s) first, then heads). */
+function pathDs(opts: ConstructorParameters<typeof ScrollArrow>[0]): string[] {
+  new ScrollArrow(opts);
+  const ds = [...document.querySelectorAll('svg path')].map(
+    (p) => p.getAttribute('d') ?? '',
+  );
+  document.querySelectorAll('svg').forEach((s) => s.remove());
+  return ds;
+}
+
 beforeEach(() => {
   ioInstances = [];
   // @ts-expect-error -- minimal stub for jsdom
@@ -129,12 +139,8 @@ describe('ScrollArrow avoid routing', () => {
       .getTotalLength;
   });
 
-  function lineD(opts: ConstructorParameters<typeof ScrollArrow>[0]): string {
-    new ScrollArrow(opts);
-    const d = document.querySelector('svg path')?.getAttribute('d') ?? '';
-    document.querySelectorAll('svg').forEach((s) => s.remove());
-    return d;
-  }
+  const lineD = (opts: ConstructorParameters<typeof ScrollArrow>[0]): string =>
+    pathDs(opts)[0] ?? '';
 
   it('bends the curve when an avoided obstacle blocks it', () => {
     const start = boxed({ left: 0, top: 0, width: 100, height: 40 });
@@ -189,14 +195,6 @@ describe('ScrollArrow shaft/head junction (#59)', () => {
     delete proto.getBBox;
   });
 
-  function pathDs(opts: ConstructorParameters<typeof ScrollArrow>[0]): string[] {
-    new ScrollArrow(opts);
-    const ds = [...document.querySelectorAll('svg path')].map(
-      (p) => p.getAttribute('d') ?? '',
-    );
-    document.querySelectorAll('svg').forEach((s) => s.remove());
-    return ds;
-  }
   const anchors = () => ({
     start: boxed({ left: 0, top: 0, width: 100, height: 40 }),
     end: boxed({ left: 300, top: 0, width: 100, height: 40 }),

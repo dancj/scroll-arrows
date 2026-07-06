@@ -416,7 +416,7 @@ export function insetEndpoints(
   const total = startInset + endInset;
   if (total <= 0) return ep;
   const chord = Math.hypot(ep.end.x - ep.start.x, ep.end.y - ep.start.y);
-  const scale = total > chord / 2 ? chord / 2 / total : 1;
+  const scale = Math.min(1, chord / 2 / total);
   const st = startTangent(ep);
   const et = endTangent(ep);
   const si = startInset * scale;
