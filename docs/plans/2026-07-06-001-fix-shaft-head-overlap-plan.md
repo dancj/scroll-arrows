@@ -1,11 +1,11 @@
 ---
-title: "fix: Stop shaft overlapping the arrowhead"
+title: 'fix: Stop shaft overlapping the arrowhead'
 date: 2026-07-06
 artifact_contract: ce-unified-plan/v1
 artifact_readiness: implementation-ready
 execution: code
 product_contract_source: ce-plan-bootstrap
-origin: "GitHub issue #59"
+origin: 'GitHub issue #59'
 ---
 
 # fix: Stop shaft overlapping the arrowhead
@@ -71,6 +71,7 @@ Geometry of the end inset (side socket, curve route): travel arrives along `-end
 **Approach:** Hoist `spread = Math.PI / 7` to a module constant used by `arrowHeadPath`; export `headBaseInset(size)` (or equivalent) returning `size * Math.cos(spread)`. Add `insetEndpoints(ep, startInset, endInset)` (curve route) that computes tangents via existing `startTangent`/`endTangent`, applies the proportional clamp from KTD3, and returns a new `Endpoints` with moved points and original normals. Extend `buildElbowPath(ep, startTrim = 0, endTrim = 0)` (elbow route) to shorten the first/last straight leg along its own axis after corners are computed from the true endpoints, clamping each trim to its leg's length (KTD4). Follow existing pure-function style in `geometry.ts`.
 **Patterns to follow:** `routeBellies` / `samplePath` doc-comment style; existing `Endpoints` shape; `buildElbowPath` branch structure.
 **Test scenarios:**
+
 - End inset, side socket: `insetEndpoints(ep, 0, k)` moves `end` by `+endNormal * k`, leaves `start` and normals untouched.
 - Start inset, side socket: `start` moves by `+startNormal * k`.
 - Both insets applied independently.
@@ -80,7 +81,7 @@ Geometry of the end inset (side socket, curve route): travel arrives along `-end
 - Elbow end trim: corners unchanged (mid-rail/corner coordinates identical to untrimmed output); only the final leg's endpoint moves back along that leg by the trim.
 - Elbow inversion guard: start `(0,0)` right-socket → end `(200,5)` top-socket with trim 12.6 (final leg length 5) — trim clamps to the leg length; the final leg never extends past its corner.
 - Elbow same-axis sockets: mid-rail `midY`/`midX` identical with and without trims.
-**Verification:** `vitest` geometry suite green; new cases cover each scenario.
+  **Verification:** `vitest` geometry suite green; new cases cover each scenario.
 
 ### U2. Wire inset into `render()` for both routes
 
@@ -91,13 +92,14 @@ Geometry of the end inset (side socket, curve route): travel arrives along `-end
 **Approach:** In `render()`, after computing `local`, derive per-end insets from `this.opts.head` and `headSize`. Curve route: build `shaft = insetEndpoints(local, si, ei)` and pass `shaft` to `routeBellies` + `buildPath`. Elbow route: pass the true `local` plus the insets as leg trims — `buildElbowPath(local, si, ei)`. Keep `arrowHeadPath(local.end, endTangent(local), size)` and the start-head call on `local` unchanged. `lineD` (label measurement) naturally uses the shortened path. No changes to `dashOffsets` / segment ordering.
 **Patterns to follow:** existing `render()` structure; `shift()` local-coords idiom.
 **Test scenarios:**
+
 - Covers R1: `head: 'end'` — the line path's `d` terminates at the socket point pulled back by `headSize * cos(π/7)` along the end normal; head path still contains the true tip coordinates.
 - Covers R2: `head: 'both'` — start of line `d` inset along the start normal; both heads at true sockets.
 - Covers R4: `head: 'none'` — line `d` endpoints equal the socket points exactly (byte-compare against pre-change expectation).
 - Covers R5: `route: 'elbow'` with `head: 'end'` — final `L` coordinate pulled back along the final leg's axis; corner coordinates unchanged from the untrimmed elbow.
 - Covers R7: segments still ordered line-then-head; existing `draw.test.ts` ordering tests pass unchanged.
 - Label still renders on a labelled arrow (shortened `lineD` doesn't break `renderLabel`).
-**Verification:** full `vitest` suite green; visual spot-check in demo page shows shaft meeting head base cleanly.
+  **Verification:** full `vitest` suite green; visual spot-check in demo page shows shaft meeting head base cleanly.
 
 ---
 
@@ -108,6 +110,7 @@ Geometry of the end inset (side socket, curve route): travel arrives along `-end
 **Out of scope (true non-goals):** rough.js wobble/overshoot tuning; changing arrowhead shape or spread.
 
 ### Deferred to Follow-Up Work
+
 - Solid/filled arrowhead type — tracked as issue #60.
 - Head-aim vs shaft-arrival divergence for center-socket curve arrows (KTD5) — accepted, revisit only if visible in practice.
 
