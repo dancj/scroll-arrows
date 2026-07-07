@@ -38,39 +38,73 @@ export function resolveLabelAt(
 export interface DrawSegment {
   len: number;
   kind: SegmentKind;
+  /** A solid head's fill path: reveals by opacity and contributes no length. */
+  fill?: boolean;
+  /** Reveal group tying a fill path to its own head's stroke paths. */
+  group?: number;
 }
 
-/**
- * Given the line/head segments and an eased progress (0..1), return the
- * `stroke-dashoffset` each segment should have.
- *
- * Line sub-strokes (rough.js emits 1-2 overlapping ones) share a single
- * leading edge so they grow together as one pen tip. Arrowhead strokes only
- * begin once the line is fully drawn, then reveal sequentially.
- */
-function lengths(segs: DrawSegment[]): { lineLen: number; headLen: number } {
+function lengths(segs: DrawSegment[]): {
+  lineLen: number;
+  headLen: number;
+  hasFill: boolean;
+} {
   let lineLen = 0;
   let headLen = 0;
+  let hasFill = false;
   for (const s of segs) {
+    if (s.fill) {
+      hasFill = true; // fades with its group; no length of its own
+      continue;
+    }
     if (s.kind === 'line') lineLen = Math.max(lineLen, s.len);
     else headLen += s.len;
   }
-  return { lineLen, headLen };
+  return { lineLen, headLen, hasFill };
 }
 
-export function dashOffsets(segs: DrawSegment[], eased: number): number[] {
-  const { lineLen, headLen } = lengths(segs);
+/**
+ * Revealed fraction (0..1) of each segment (a stroke's dash offset is
+ * `len * (1 - fraction)`). Line strokes share one leading edge so they grow
+ * together as one pen tip; head strokes reveal sequentially once the line is
+ * done. A solid head's fill path contributes no length to the budget — its
+ * fraction mirrors its own head group's stroke reveal, so the fill fades in
+ * while the outline draws (#60).
+ */
+export function segmentFractions(segs: DrawSegment[], eased: number): number[] {
+  const { lineLen, headLen, hasFill } = lengths(segs);
   const total = lineLen + headLen || 1;
   const drawn = clamp01(eased) * total;
 
   const lp = lineLen > 0 ? clamp01(drawn / lineLen) : 1;
   let headDrawn = Math.max(0, drawn - lineLen);
 
-  return segs.map((seg) => {
-    if (seg.kind === 'line') return seg.len * (1 - lp);
+  // Fast path for the common line-style case: no fill segments, so no group
+  // bookkeeping — this runs per animation frame while scrolling.
+  if (!hasFill) {
+    return segs.map((seg) => {
+      if (seg.kind === 'line') return lp;
+      const show = Math.max(0, Math.min(seg.len, headDrawn));
+      headDrawn -= seg.len;
+      return seg.len > 0 ? show / seg.len : 1;
+    });
+  }
+
+  const groupLen = new Map<number | undefined, number>();
+  const groupShown = new Map<number | undefined, number>();
+  const fractions = segs.map((seg) => {
+    if (seg.fill) return -1; // resolved from its group's strokes below
+    if (seg.kind === 'line') return lp;
     const show = Math.max(0, Math.min(seg.len, headDrawn));
     headDrawn -= seg.len;
-    return seg.len - show;
+    groupLen.set(seg.group, (groupLen.get(seg.group) ?? 0) + seg.len);
+    groupShown.set(seg.group, (groupShown.get(seg.group) ?? 0) + show);
+    return seg.len > 0 ? show / seg.len : 1;
+  });
+  return fractions.map((f, i) => {
+    if (f >= 0) return f;
+    const len = groupLen.get(segs[i]!.group) ?? 0;
+    return len > 0 ? clamp01((groupShown.get(segs[i]!.group) ?? 0) / len) : lp;
   });
 }
 

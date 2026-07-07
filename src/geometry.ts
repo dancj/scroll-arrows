@@ -382,8 +382,14 @@ export function headBaseInset(size: number): number {
   return size * Math.cos(HEAD_SPREAD);
 }
 
-/** Two short strokes forming an arrowhead at `tip`, opening along `dir`. */
-export function arrowHeadPath(tip: Point, dir: Point, size: number): string {
+/** Two short strokes forming an arrowhead at `tip`, opening along `dir`.
+ * `closed` appends `Z` for a fillable triangle (solid head style). */
+export function arrowHeadPath(
+  tip: Point,
+  dir: Point,
+  size: number,
+  closed = false,
+): string {
   const a = Math.atan2(dir.y, dir.x);
   const spread = HEAD_SPREAD;
   const p1 = {
@@ -394,7 +400,8 @@ export function arrowHeadPath(tip: Point, dir: Point, size: number): string {
     x: tip.x - size * Math.cos(a + spread),
     y: tip.y - size * Math.sin(a + spread),
   };
-  return `M ${r(p1.x)} ${r(p1.y)} L ${r(tip.x)} ${r(tip.y)} L ${r(p2.x)} ${r(p2.y)}`;
+  const d = `M ${r(p1.x)} ${r(p1.y)} L ${r(tip.x)} ${r(tip.y)} L ${r(p2.x)} ${r(p2.y)}`;
+  return closed ? `${d} Z` : d;
 }
 
 /**

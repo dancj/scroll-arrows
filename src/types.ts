@@ -6,6 +6,13 @@ export type Socket = 'auto' | 'top' | 'bottom' | 'left' | 'right' | 'center';
 export type ArrowHead = 'start' | 'end' | 'both' | 'none';
 
 /**
+ * Arrowhead rendering style. `'line'` (default) draws the head as two open
+ * strokes (a V); `'solid'` closes the head into a triangle filled with the
+ * stroke color, keeping the hand-drawn look.
+ */
+export type HeadStyle = 'line' | 'solid';
+
+/**
  * Line routing style. `curved` (default) is the smooth bezier with single-bend
  * obstacle avoidance. `elbow` draws right-angle connectors (tree/org-chart
  * brackets); `elbow` ignores `avoid`/`curvature`.
@@ -105,6 +112,12 @@ export interface ScrollArrowOptions {
   head?: ArrowHead;
   /** Arrowhead length in px. Default 14. */
   headSize?: number;
+  /**
+   * Arrowhead style: `"line"` (default) for an open V, `"solid"` for a filled
+   * triangle in the stroke color. Applies to whichever ends `head` selects.
+   * Solid heads fade in as their outline draws instead of dash-revealing.
+   */
+  headStyle?: HeadStyle;
 
   /** Text to place along the line. Omit for no label. */
   label?: string;

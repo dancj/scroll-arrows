@@ -28,10 +28,11 @@ import {
 import { getOverlay, overlayOrigin, createGroup, createSvgEl } from './overlay';
 import { mapRoughness, deriveSeed } from './roughness';
 import {
-  dashOffsets,
+  segmentFractions,
   lineProgress,
   labelOpacity,
   resolveLabelAt,
+  type DrawSegment,
 } from './draw';
 
 interface ResolvedRefs {
@@ -67,11 +68,9 @@ export class ScrollArrow {
    * Drawable segments. Line strokes (rough.js emits 1-2 overlapping ones) share
    * a leading edge so they grow as a single pen tip; heads draw after the line.
    */
-  private segments: {
-    el: SVGPathElement;
-    len: number;
-    kind: 'line' | 'head';
-  }[] = [];
+  private segments: (DrawSegment & { el: SVGPathElement })[] = [];
+  /** Counter handing each appendDrawable call its reveal group id. */
+  private groupIds = 0;
   /** Representative line stroke + label nodes, when a label is set. */
   private lineEl: SVGPathElement | null = null;
   /**
@@ -289,18 +288,24 @@ export class ScrollArrow {
     this.lineD = d;
     this.appendDrawable(this.rc.path(d, roughOpts), 'line');
 
-    // Arrowheads, anchored at the true socket points.
+    // Arrowheads, anchored at the true socket points. Solid style closes the
+    // triangle and fills it with the stroke color (#60); rough.js emits the
+    // fill path alongside the outline stroke(s).
+    const solid = this.opts.headStyle === 'solid';
+    const headOpts = solid
+      ? { ...roughOpts, fill: this.stroke, fillStyle: 'solid' }
+      : roughOpts;
     if (hasEndHead) {
       const dir = endTangent(local);
       this.appendDrawable(
-        this.rc.path(arrowHeadPath(local.end, dir, size), roughOpts),
+        this.rc.path(arrowHeadPath(local.end, dir, size, solid), headOpts),
         'head',
       );
     }
     if (hasStartHead) {
       const dir = startTangent(local);
       this.appendDrawable(
-        this.rc.path(arrowHeadPath(local.start, dir, size), roughOpts),
+        this.rc.path(arrowHeadPath(local.start, dir, size, solid), headOpts),
         'head',
       );
     }
@@ -311,8 +316,13 @@ export class ScrollArrow {
     let longest = 0;
     for (const seg of this.segments) {
       seg.len = seg.el.getTotalLength();
-      seg.el.style.strokeDasharray = String(seg.len);
-      seg.el.style.strokeDashoffset = String(seg.len);
+      if (seg.fill) {
+        // A filled head can't dash-reveal; it fades in via opacity instead.
+        seg.el.style.opacity = '0';
+      } else {
+        seg.el.style.strokeDasharray = String(seg.len);
+        seg.el.style.strokeDashoffset = String(seg.len);
+      }
       if (seg.kind === 'line' && seg.len >= longest) {
         longest = seg.len;
         this.lineEl = seg.el;
@@ -386,14 +396,19 @@ export class ScrollArrow {
     this.labelEl = label;
   }
 
-  /** roughjs returns a <g> of one or more <path>; collect them in order. */
+  /**
+   * roughjs returns a <g> of one or more <path>; collect them in order.
+   * Stroke paths already carry fill="none" from rough.js; a solid head's fill
+   * path carries the fill color and is marked so it reveals by opacity.
+   */
   private appendDrawable(g: SVGGElement, kind: 'line' | 'head'): void {
+    const group = this.groupIds++;
     const paths = g.querySelectorAll('path');
     paths.forEach((p) => {
       const el = p as SVGPathElement;
-      el.setAttribute('fill', 'none');
+      const fill = el.getAttribute('fill') !== 'none' || undefined;
       this.group.appendChild(el);
-      this.segments.push({ el, len: 0, kind });
+      this.segments.push({ el, len: 0, kind, fill, group });
     });
   }
 
@@ -404,9 +419,11 @@ export class ScrollArrow {
    */
   private applyProgress(): void {
     const eased = this.opts.easing(clamp01(this.progress));
-    const offsets = dashOffsets(this.segments, eased);
+    const fractions = segmentFractions(this.segments, eased);
     this.segments.forEach((seg, i) => {
-      seg.el.style.strokeDashoffset = String(offsets[i]);
+      const f = fractions[i]!;
+      if (seg.fill) seg.el.style.opacity = String(f);
+      else seg.el.style.strokeDashoffset = String(seg.len * (1 - f));
     });
 
     if (this.labelEl) {

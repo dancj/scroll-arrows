@@ -6,6 +6,7 @@ export type {
   ScrollOptions,
   Socket,
   ArrowHead,
+  HeadStyle,
   ElementRef,
   LabelPosition,
   Point,
