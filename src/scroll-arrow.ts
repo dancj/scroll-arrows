@@ -28,7 +28,7 @@ import {
 import { getOverlay, overlayOrigin, createGroup, createSvgEl } from './overlay';
 import { mapRoughness, deriveSeed } from './roughness';
 import {
-  dashOffsets,
+  segmentFractions,
   lineProgress,
   labelOpacity,
   resolveLabelAt,
@@ -323,8 +323,13 @@ export class ScrollArrow {
     let longest = 0;
     for (const seg of this.segments) {
       seg.len = seg.el.getTotalLength();
-      seg.el.style.strokeDasharray = String(seg.len);
-      seg.el.style.strokeDashoffset = String(seg.len);
+      if (seg.fill) {
+        // A filled head can't dash-reveal; it fades in via opacity instead.
+        seg.el.style.opacity = '0';
+      } else {
+        seg.el.style.strokeDasharray = String(seg.len);
+        seg.el.style.strokeDashoffset = String(seg.len);
+      }
       if (seg.kind === 'line' && seg.len >= longest) {
         longest = seg.len;
         this.lineEl = seg.el;
@@ -421,9 +426,11 @@ export class ScrollArrow {
    */
   private applyProgress(): void {
     const eased = this.opts.easing(clamp01(this.progress));
-    const offsets = dashOffsets(this.segments, eased);
+    const fractions = segmentFractions(this.segments, eased);
     this.segments.forEach((seg, i) => {
-      seg.el.style.strokeDashoffset = String(offsets[i]);
+      const f = fractions[i]!;
+      if (seg.fill) seg.el.style.opacity = String(f);
+      else seg.el.style.strokeDashoffset = String(seg.len * (1 - f));
     });
 
     if (this.labelEl) {

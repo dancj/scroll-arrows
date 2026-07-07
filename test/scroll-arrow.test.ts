@@ -358,6 +358,25 @@ describe("ScrollArrow headStyle: 'solid' (#60)", () => {
     expect(ps.filter((p) => p.fill === '#123456')).toHaveLength(2);
   });
 
+  it('fades the fill in: hidden at progress 0, shown fully drawn', () => {
+    const a = anchors();
+    const arrow = new ScrollArrow({
+      ...a,
+      seed: 7,
+      head: 'end',
+      headStyle: 'solid',
+      stroke: '#123456',
+      scroll: false,
+    });
+    const fillEl = [...document.querySelectorAll('svg path')].find(
+      (p) => p.getAttribute('fill') === '#123456',
+    ) as SVGPathElement;
+    expect(fillEl.style.opacity).toBe('0');
+    arrow.setProgress(1);
+    expect(fillEl.style.opacity).toBe('1');
+    document.querySelectorAll('svg').forEach((s) => s.remove());
+  });
+
   it("line paths keep fill='none' regardless of headStyle", () => {
     const a = anchors();
     const ps = paths({
