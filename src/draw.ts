@@ -70,10 +70,7 @@ function lengths(segs: DrawSegment[]): { lineLen: number; headLen: number } {
  * its own head group's stroke reveal, so the fill fades in while the outline
  * draws (#60).
  */
-export function segmentFractions(
-  segs: DrawSegment[],
-  eased: number,
-): number[] {
+export function segmentFractions(segs: DrawSegment[], eased: number): number[] {
   const { lineLen, headLen } = lengths(segs);
   const total = lineLen + headLen || 1;
   const drawn = clamp01(eased) * total;

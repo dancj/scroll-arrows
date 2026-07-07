@@ -38,6 +38,7 @@ const arrow = scrollArrow({
   stroke: '#e7e9ee',
   strokeWidth: 2.5,
   head: 'end', // "start" | "end" | "both" | "none"
+  headStyle: 'solid', // "line" (open V, default) | "solid" (filled triangle)
 });
 
 // later
@@ -237,7 +238,7 @@ the runtime arrow mounts in its own overlay and won't clash with your static one
 
 Key options: `start`, `end`, `container`, `roughness`, `stroke`, `strokeWidth`,
 `seed`, `startSocket`, `endSocket`, `startSocketOffset`, `endSocketOffset`,
-`curvature`, `route`, `head`, `headSize`, `scroll`, `speed`, `easing`,
+`curvature`, `route`, `head`, `headSize`, `headStyle`, `scroll`, `speed`, `easing`,
 `progress`, `enabled`. Full types ship with the package. `setEnabled(on)` toggles
 an arrow (and a group) on/off without teardown.
 

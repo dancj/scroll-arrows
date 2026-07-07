@@ -242,7 +242,7 @@ describe('ScrollArrow shaft/head junction (#59)', () => {
     expect(headD).toMatch(/300[ ,]+20/);
   });
 
-  it("insets the shaft when only a start head is drawn (#61)", () => {
+  it('insets the shaft when only a start head is drawn (#61)', () => {
     const a = anchors();
     const noHead = pathDs({ ...a, seed: 7, head: 'none' })[0];
     const withHead = pathDs({ ...a, seed: 7, head: 'start' })[0];
@@ -251,7 +251,7 @@ describe('ScrollArrow shaft/head junction (#59)', () => {
     expect(withHead).not.toBe(noHead);
   });
 
-  it("keeps the start head anchored at the true start socket (#61)", () => {
+  it('keeps the start head anchored at the true start socket (#61)', () => {
     // Mirror of R3: with anchorEnds the start head must still pass through the
     // true start socket (100, 20) even though the shaft now starts short of it.
     const a = anchors();
