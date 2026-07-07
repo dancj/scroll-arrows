@@ -369,6 +369,32 @@ describe("ScrollArrow headStyle: 'solid' (#60)", () => {
     document.querySelectorAll('svg').forEach((s) => s.remove());
   });
 
+  it("fades each solid head independently for head: 'both'", () => {
+    // Proves appendDrawable's real group ids drive per-head fades: at an
+    // intermediate progress the end head's fill is fully in while the start
+    // head's is still fading (heads reveal sequentially after the line).
+    const a = anchors();
+    const arrow = new ScrollArrow({
+      ...a,
+      seed: 7,
+      head: 'both',
+      headStyle: 'solid',
+      stroke: '#123456',
+      scroll: false,
+    });
+    arrow.setProgress(0.6);
+    const opacities = [...document.querySelectorAll('svg path')]
+      .filter((p) => p.getAttribute('fill') === '#123456')
+      .map((p) => Number((p as SVGPathElement).style.opacity));
+    expect(opacities).toHaveLength(2);
+    const hi = Math.max(...opacities);
+    const lo = Math.min(...opacities);
+    expect(hi).toBe(1);
+    expect(lo).toBeGreaterThan(0);
+    expect(lo).toBeLessThan(1);
+    document.querySelectorAll('svg').forEach((s) => s.remove());
+  });
+
   it("line paths keep fill='none' regardless of headStyle", () => {
     const a = anchors();
     const ps = paths({
