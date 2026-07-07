@@ -1,11 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import {
-  dashOffsets,
+  segmentFractions,
   lineProgress,
   labelOpacity,
   resolveLabelAt,
   type DrawSegment,
 } from '../src/draw';
+
+/** The dash offset each stroke segment gets in applyProgress: len * (1 - fraction). */
+const dashOffsets = (segs: DrawSegment[], eased: number): number[] =>
+  segmentFractions(segs, eased).map((f, i) => segs[i]!.len * (1 - f));
 
 const line2: DrawSegment[] = [
   { len: 100, kind: 'line' },
@@ -64,6 +68,61 @@ describe('dashOffsets', () => {
 
   it('handles empty input without dividing by zero', () => {
     expect(dashOffsets([], 0.5)).toEqual([]);
+  });
+});
+
+describe('segmentFractions with a solid head fill (#60)', () => {
+  // rough.js emits the fill path BEFORE the outline stroke(s) of a head.
+  const solidHead: DrawSegment[] = [
+    { len: 100, kind: 'line', group: 0 },
+    { len: 30, kind: 'head', fill: true, group: 1 },
+    { len: 20, kind: 'head', group: 1 },
+  ];
+
+  it('keeps the fill hidden while the line is still drawing', () => {
+    const [, fill] = segmentFractions(solidHead, 0.5);
+    expect(fill).toBe(0);
+  });
+
+  it("fades the fill with its own head group's stroke fraction", () => {
+    // Budget excludes the fill: total = 100 + 20. At drawn = 110 the head
+    // outline is halfway — the fill's opacity must ride along at 0.5.
+    const [line, fill, stroke] = segmentFractions(solidHead, 110 / 120);
+    expect(line).toBe(1);
+    expect(stroke).toBeCloseTo(0.5);
+    expect(fill).toBeCloseTo(0.5);
+  });
+
+  it('contributes no length to the draw budget', () => {
+    const noFill: DrawSegment[] = [
+      { len: 100, kind: 'line', group: 0 },
+      { len: 20, kind: 'head', group: 1 },
+    ];
+    // The line completes at the same eased progress with and without the
+    // fill segment, and mid-draw pacing matches exactly.
+    expect(segmentFractions(solidHead, 100 / 120)[0]).toBe(1);
+    expect(segmentFractions(noFill, 100 / 120)[0]).toBe(1);
+    expect(segmentFractions(solidHead, 0.5)[0]).toBeCloseTo(
+      segmentFractions(noFill, 0.5)[0]!,
+    );
+  });
+
+  it('shows everything at progress 1 (reduced motion / static)', () => {
+    expect(segmentFractions(solidHead, 1)).toEqual([1, 1, 1]);
+  });
+
+  it('each solid head fades with its own slot for head: both', () => {
+    const twoSolidHeads: DrawSegment[] = [
+      { len: 100, kind: 'line', group: 0 },
+      { len: 15, kind: 'head', fill: true, group: 1 },
+      { len: 10, kind: 'head', group: 1 },
+      { len: 15, kind: 'head', fill: true, group: 2 },
+      { len: 10, kind: 'head', group: 2 },
+    ];
+    // total = 100 + 10 + 10; drawn = 115 -> first head done, second halfway.
+    const [, fill1, , fill2] = segmentFractions(twoSolidHeads, 115 / 120);
+    expect(fill1).toBe(1);
+    expect(fill2).toBeCloseTo(0.5);
   });
 });
 
