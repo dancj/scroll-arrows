@@ -191,6 +191,17 @@ describe('arrowHeadPath', () => {
     const d = arrowHeadPath({ x: 100, y: 0 }, { x: 1, y: 0 }, 14);
     expect(d).toMatch(/^M .+ L 100 0 L .+$/);
   });
+
+  it('stays open by default (no Z, exact current shape)', () => {
+    const d = arrowHeadPath({ x: 100, y: 0 }, { x: 1, y: 0 }, 14);
+    expect(d).not.toContain('Z');
+  });
+
+  it('closes the triangle when closed=true, same three points', () => {
+    const open = arrowHeadPath({ x: 100, y: 0 }, { x: 1, y: 0 }, 14);
+    const closed = arrowHeadPath({ x: 100, y: 0 }, { x: 1, y: 0 }, 14, true);
+    expect(closed).toBe(`${open} Z`);
+  });
 });
 
 describe('tangents', () => {
