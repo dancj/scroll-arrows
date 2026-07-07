@@ -242,6 +242,36 @@ describe('ScrollArrow shaft/head junction (#59)', () => {
     expect(headD).toMatch(/300[ ,]+20/);
   });
 
+  it("insets the shaft when only a start head is drawn (#61)", () => {
+    const a = anchors();
+    const noHead = pathDs({ ...a, seed: 7, head: 'none' })[0];
+    const withHead = pathDs({ ...a, seed: 7, head: 'start' })[0];
+    expect(noHead).toBeTruthy();
+    expect(withHead).toBeTruthy();
+    expect(withHead).not.toBe(noHead);
+  });
+
+  it("keeps the start head anchored at the true start socket (#61)", () => {
+    // Mirror of R3: with anchorEnds the start head must still pass through the
+    // true start socket (100, 20) even though the shaft now starts short of it.
+    const a = anchors();
+    const ds = pathDs({ ...a, seed: 7, head: 'start' });
+    const headD = ds[ds.length - 1]!;
+    expect(headD).toMatch(/100[ ,]+20/);
+  });
+
+  it("trims the elbow's start leg for head: 'start' (#61)", () => {
+    const a = anchors();
+    const noHead = pathDs({ ...a, seed: 7, route: 'elbow', head: 'none' })[0];
+    const withHead = pathDs({
+      ...a,
+      seed: 7,
+      route: 'elbow',
+      head: 'start',
+    })[0];
+    expect(withHead).not.toBe(noHead);
+  });
+
   it('trims the elbow shaft when an end head is drawn (R5)', () => {
     const a = anchors();
     const noHead = pathDs({ ...a, seed: 7, route: 'elbow', head: 'none' })[0];
