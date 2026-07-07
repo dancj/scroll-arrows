@@ -1,12 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import {
-  dashOffsets,
   segmentFractions,
   lineProgress,
   labelOpacity,
   resolveLabelAt,
   type DrawSegment,
 } from '../src/draw';
+
+/** The dash offset each stroke segment gets in applyProgress: len * (1 - fraction). */
+const dashOffsets = (segs: DrawSegment[], eased: number): number[] =>
+  segmentFractions(segs, eased).map((f, i) => segs[i]!.len * (1 - f));
 
 const line2: DrawSegment[] = [
   { len: 100, kind: 'line' },
@@ -120,16 +123,6 @@ describe('segmentFractions with a solid head fill (#60)', () => {
     const [, fill1, , fill2] = segmentFractions(twoSolidHeads, 115 / 120);
     expect(fill1).toBe(1);
     expect(fill2).toBeCloseTo(0.5);
-  });
-
-  it('matches dashOffsets exactly for stroke-only segments (R2)', () => {
-    for (const eased of [0, 0.3, 0.5, 100 / 120, 1]) {
-      const fr = segmentFractions(withHead, eased);
-      const offs = dashOffsets(withHead, eased);
-      withHead.forEach((s, i) => {
-        expect(s.len * (1 - fr[i]!)).toBeCloseTo(offs[i]!);
-      });
-    }
   });
 });
 

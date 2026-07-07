@@ -32,6 +32,7 @@ import {
   lineProgress,
   labelOpacity,
   resolveLabelAt,
+  type DrawSegment,
 } from './draw';
 
 interface ResolvedRefs {
@@ -67,15 +68,7 @@ export class ScrollArrow {
    * Drawable segments. Line strokes (rough.js emits 1-2 overlapping ones) share
    * a leading edge so they grow as a single pen tip; heads draw after the line.
    */
-  private segments: {
-    el: SVGPathElement;
-    len: number;
-    kind: 'line' | 'head';
-    /** True for a solid head's fill path — reveals by opacity, not dash. */
-    fill?: boolean;
-    /** Reveal group: all paths from one drawable share it (line, each head). */
-    group?: number;
-  }[] = [];
+  private segments: (DrawSegment & { el: SVGPathElement })[] = [];
   /** Counter handing each appendDrawable call its reveal group id. */
   private groupIds = 0;
   /** Representative line stroke + label nodes, when a label is set. */

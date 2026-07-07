@@ -24,15 +24,30 @@ function boxed(rect: Partial<DOMRect>): HTMLElement {
   return el;
 }
 
+/** Render an arrow, return every path's { d, fill } (line stroke(s) first,
+ * then heads), then clean up. */
+function paths(
+  opts: ConstructorParameters<typeof ScrollArrow>[0],
+): { d: string; fill: string }[] {
+  new ScrollArrow(opts);
+  const out = [...document.querySelectorAll('svg path')].map((p) => ({
+    d: p.getAttribute('d') ?? '',
+    fill: p.getAttribute('fill') ?? '',
+  }));
+  document.querySelectorAll('svg').forEach((s) => s.remove());
+  return out;
+}
+
 /** Render an arrow, return every path's `d` (line stroke(s) first, then heads). */
 function pathDs(opts: ConstructorParameters<typeof ScrollArrow>[0]): string[] {
-  new ScrollArrow(opts);
-  const ds = [...document.querySelectorAll('svg path')].map(
-    (p) => p.getAttribute('d') ?? '',
-  );
-  document.querySelectorAll('svg').forEach((s) => s.remove());
-  return ds;
+  return paths(opts).map((p) => p.d);
 }
+
+/** Standard side-by-side anchors: start socket (100, 20), end socket (300, 20). */
+const anchors = () => ({
+  start: boxed({ left: 0, top: 0, width: 100, height: 40 }),
+  end: boxed({ left: 300, top: 0, width: 100, height: 40 }),
+});
 
 beforeEach(() => {
   ioInstances = [];
@@ -195,11 +210,6 @@ describe('ScrollArrow shaft/head junction (#59)', () => {
     delete proto.getBBox;
   });
 
-  const anchors = () => ({
-    start: boxed({ left: 0, top: 0, width: 100, height: 40 }),
-    end: boxed({ left: 300, top: 0, width: 100, height: 40 }),
-  });
-
   it('pulls the shaft back from the tip when an end head is drawn (R1)', () => {
     const a = anchors();
     const noHead = pathDs({ ...a, seed: 7, head: 'none' })[0];
@@ -296,24 +306,6 @@ describe("ScrollArrow headStyle: 'solid' (#60)", () => {
   afterEach(() => {
     delete (SVGElement.prototype as SvgStubs).getTotalLength;
   });
-
-  const anchors = () => ({
-    start: boxed({ left: 0, top: 0, width: 100, height: 40 }),
-    end: boxed({ left: 300, top: 0, width: 100, height: 40 }),
-  });
-
-  /** Render and return every path's { d, fill }, then clean up. */
-  const paths = (
-    opts: ConstructorParameters<typeof ScrollArrow>[0],
-  ): { d: string; fill: string }[] => {
-    new ScrollArrow(opts);
-    const out = [...document.querySelectorAll('svg path')].map((p) => ({
-      d: p.getAttribute('d') ?? '',
-      fill: p.getAttribute('fill') ?? '',
-    }));
-    document.querySelectorAll('svg').forEach((s) => s.remove());
-    return out;
-  };
 
   it('fills the end head with the stroke color', () => {
     const a = anchors();
