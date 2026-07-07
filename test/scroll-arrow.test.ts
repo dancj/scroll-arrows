@@ -24,6 +24,16 @@ function boxed(rect: Partial<DOMRect>): HTMLElement {
   return el;
 }
 
+/** Render an arrow, return every path's `d` (line stroke(s) first, then heads). */
+function pathDs(opts: ConstructorParameters<typeof ScrollArrow>[0]): string[] {
+  new ScrollArrow(opts);
+  const ds = [...document.querySelectorAll('svg path')].map(
+    (p) => p.getAttribute('d') ?? '',
+  );
+  document.querySelectorAll('svg').forEach((s) => s.remove());
+  return ds;
+}
+
 beforeEach(() => {
   ioInstances = [];
   // @ts-expect-error -- minimal stub for jsdom
@@ -129,12 +139,8 @@ describe('ScrollArrow avoid routing', () => {
       .getTotalLength;
   });
 
-  function lineD(opts: ConstructorParameters<typeof ScrollArrow>[0]): string {
-    new ScrollArrow(opts);
-    const d = document.querySelector('svg path')?.getAttribute('d') ?? '';
-    document.querySelectorAll('svg').forEach((s) => s.remove());
-    return d;
-  }
+  const lineD = (opts: ConstructorParameters<typeof ScrollArrow>[0]): string =>
+    pathDs(opts)[0] ?? '';
 
   it('bends the curve when an avoided obstacle blocks it', () => {
     const start = boxed({ left: 0, top: 0, width: 100, height: 40 });
@@ -164,5 +170,89 @@ describe('ScrollArrow avoid routing', () => {
     });
     expect(plain).toBeTruthy();
     expect(routed).toBe(plain);
+  });
+});
+
+describe('ScrollArrow shaft/head junction (#59)', () => {
+  // Same jsdom SVG-geometry stub as the avoid-routing suite above, plus the
+  // label-measurement calls (getPointAtLength/getBBox). rough.js is
+  // deterministic for a fixed seed, so DOM `d` strings witness geometry.
+  type SvgStubs = {
+    getTotalLength?: unknown;
+    getPointAtLength?: unknown;
+    getBBox?: unknown;
+  };
+  beforeEach(() => {
+    const proto = SVGElement.prototype as SvgStubs;
+    proto.getTotalLength = () => 100;
+    proto.getPointAtLength = (l: number) => ({ x: l, y: 20 });
+    proto.getBBox = () => ({ x: 0, y: 0, width: 20, height: 10 });
+  });
+  afterEach(() => {
+    const proto = SVGElement.prototype as SvgStubs;
+    delete proto.getTotalLength;
+    delete proto.getPointAtLength;
+    delete proto.getBBox;
+  });
+
+  const anchors = () => ({
+    start: boxed({ left: 0, top: 0, width: 100, height: 40 }),
+    end: boxed({ left: 300, top: 0, width: 100, height: 40 }),
+  });
+
+  it('pulls the shaft back from the tip when an end head is drawn (R1)', () => {
+    const a = anchors();
+    const noHead = pathDs({ ...a, seed: 7, head: 'none' })[0];
+    const withHead = pathDs({ ...a, seed: 7, head: 'end' })[0];
+    expect(noHead).toBeTruthy();
+    expect(withHead).toBeTruthy();
+    expect(withHead).not.toBe(noHead);
+  });
+
+  it('leaves the shaft untouched when no head is drawn (R4)', () => {
+    // headSize can only reach the line through the inset; with head:'none'
+    // the shaft must not depend on it.
+    const a = anchors();
+    const small = pathDs({ ...a, seed: 7, head: 'none', headSize: 14 })[0];
+    const large = pathDs({ ...a, seed: 7, head: 'none', headSize: 28 })[0];
+    expect(small).toBe(large);
+  });
+
+  it('scales the shaft inset with headSize', () => {
+    const a = anchors();
+    const small = pathDs({ ...a, seed: 7, head: 'end', headSize: 14 })[0];
+    const large = pathDs({ ...a, seed: 7, head: 'end', headSize: 28 })[0];
+    expect(small).not.toBe(large);
+  });
+
+  it('insets the start too for head: both (R2)', () => {
+    const a = anchors();
+    const endOnly = pathDs({ ...a, seed: 7, head: 'end' })[0];
+    const both = pathDs({ ...a, seed: 7, head: 'both' })[0];
+    expect(both).not.toBe(endOnly);
+  });
+
+  it('keeps the arrowhead anchored at the true socket point (R3)', () => {
+    // anchorEnds (preserveVertices) keeps exact vertices, so the head path
+    // must still pass through the true end socket (300, 20) even though the
+    // shaft now stops short of it.
+    const a = anchors();
+    const ds = pathDs({ ...a, seed: 7, head: 'end' });
+    const headD = ds[ds.length - 1]!;
+    expect(headD).toMatch(/300[ ,]+20/);
+  });
+
+  it('trims the elbow shaft when an end head is drawn (R5)', () => {
+    const a = anchors();
+    const noHead = pathDs({ ...a, seed: 7, route: 'elbow', head: 'none' })[0];
+    const withHead = pathDs({ ...a, seed: 7, route: 'elbow', head: 'end' })[0];
+    expect(withHead).not.toBe(noHead);
+  });
+
+  it('still renders a label on a headed arrow', () => {
+    const a = anchors();
+    new ScrollArrow({ ...a, seed: 7, head: 'both', label: 'hi' });
+    expect(document.querySelector('svg text')?.textContent).toBe('hi');
+    document.querySelectorAll('svg').forEach((s) => s.remove());
   });
 });

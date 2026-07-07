@@ -8,6 +8,8 @@ import {
   buildPath,
   buildElbowPath,
   arrowHeadPath,
+  headBaseInset,
+  insetEndpoints,
   endTangent,
   startTangent,
   unitNormal,
@@ -249,12 +251,24 @@ export class ScrollArrow {
       this.opts.anchorEnds ?? true,
     );
 
+    // Stop the shaft at each drawn head's base instead of its tip (#59). The
+    // heads themselves stay anchored at the true socket points below.
+    const head = this.opts.head;
+    const size = this.opts.headSize;
+    const hasStartHead = head === 'start' || head === 'both';
+    const hasEndHead = head === 'end' || head === 'both';
+    const inset = headBaseInset(size);
+    const startInset = hasStartHead ? inset : 0;
+    const endInset = hasEndHead ? inset : 0;
+
     let d: string;
     if (this.opts.route === 'elbow') {
       // Orthogonal connector: ignores obstacle avoidance and curvature.
-      d = buildElbowPath(local);
+      d = buildElbowPath(local, startInset, endInset);
     } else {
-      // Route around any obstacles, then build the curve.
+      // Route around any obstacles, then build the curve — both against the
+      // inset endpoints, so detection matches the rendered shaft.
+      const shaft = insetEndpoints(local, startInset, endInset);
       const obstacles: Box[] = this.resolveAvoid().map((el) => {
         const dr = docRect(el);
         return {
@@ -265,27 +279,25 @@ export class ScrollArrow {
         };
       });
       const { b1, b2 } = routeBellies(
-        local,
+        shaft,
         curvature,
         obstacles,
         this.opts.avoidPadding ?? 14,
       );
-      d = buildPath(local, curvature, b1, b2);
+      d = buildPath(shaft, curvature, b1, b2);
     }
     this.lineD = d;
     this.appendDrawable(this.rc.path(d, roughOpts), 'line');
 
-    // Arrowheads.
-    const head = this.opts.head;
-    const size = this.opts.headSize;
-    if (head === 'end' || head === 'both') {
+    // Arrowheads, anchored at the true socket points.
+    if (hasEndHead) {
       const dir = endTangent(local);
       this.appendDrawable(
         this.rc.path(arrowHeadPath(local.end, dir, size), roughOpts),
         'head',
       );
     }
-    if (head === 'start' || head === 'both') {
+    if (hasStartHead) {
       const dir = startTangent(local);
       this.appendDrawable(
         this.rc.path(arrowHeadPath(local.start, dir, size), roughOpts),

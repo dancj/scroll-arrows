@@ -10,6 +10,9 @@ import {
   routeBellies,
   samplePath,
   isDegenerateRect,
+  insetEndpoints,
+  headBaseInset,
+  type Endpoints,
   type DocRect,
   type Box,
 } from '../src/geometry';
@@ -405,3 +408,146 @@ function controlX(d: string): number {
   const cIdx = parts.indexOf('C');
   return Number(parts[cIdx + 1]);
 }
+
+describe('headBaseInset', () => {
+  it('is the head base depth: size * cos(spread)', () => {
+    expect(headBaseInset(14)).toBeCloseTo(14 * Math.cos(Math.PI / 7), 6);
+  });
+});
+
+describe('insetEndpoints', () => {
+  const facing = (): Endpoints => ({
+    start: { x: 100, y: 50 },
+    end: { x: 300, y: 50 },
+    startNormal: { x: 1, y: 0 },
+    endNormal: { x: -1, y: 0 },
+  });
+
+  it('moves the end back along the arrival path (+endNormal)', () => {
+    const out = insetEndpoints(facing(), 0, 10);
+    expect(out.end).toEqual({ x: 290, y: 50 });
+    expect(out.start).toEqual({ x: 100, y: 50 });
+    expect(out.startNormal).toEqual({ x: 1, y: 0 });
+    expect(out.endNormal).toEqual({ x: -1, y: 0 });
+  });
+
+  it('moves the start forward along the departure path (+startNormal)', () => {
+    const out = insetEndpoints(facing(), 10, 0);
+    expect(out.start).toEqual({ x: 110, y: 50 });
+    expect(out.end).toEqual({ x: 300, y: 50 });
+  });
+
+  it('applies both insets independently', () => {
+    const out = insetEndpoints(facing(), 5, 10);
+    expect(out.start).toEqual({ x: 105, y: 50 });
+    expect(out.end).toEqual({ x: 290, y: 50 });
+  });
+
+  it('is the identity for zero insets (head: none)', () => {
+    const ep = facing();
+    const out = insetEndpoints(ep, 0, 0);
+    expect(out.start).toEqual(ep.start);
+    expect(out.end).toEqual(ep.end);
+  });
+
+  it('falls back along the chord for center sockets (zero normals)', () => {
+    const ep: Endpoints = {
+      start: { x: 0, y: 0 },
+      end: { x: 100, y: 0 },
+      startNormal: { x: 0, y: 0 },
+      endNormal: { x: 0, y: 0 },
+    };
+    const out = insetEndpoints(ep, 10, 10);
+    expect(out.start.x).toBeCloseTo(10, 6);
+    expect(out.end.x).toBeCloseTo(90, 6);
+  });
+
+  it('clamps on a short facing-collinear chord so the shaft keeps half of it', () => {
+    // Chord 10, insets 12+12: scale to 5 total; endpoints never cross.
+    const ep: Endpoints = {
+      start: { x: 0, y: 0 },
+      end: { x: 10, y: 0 },
+      startNormal: { x: 1, y: 0 },
+      endNormal: { x: -1, y: 0 },
+    };
+    const out = insetEndpoints(ep, 12, 12);
+    expect(out.start.x).toBeCloseTo(2.5, 6);
+    expect(out.end.x).toBeCloseTo(7.5, 6);
+    expect(out.end.x - out.start.x).toBeCloseTo(5, 6); // ≥ half the chord
+  });
+});
+
+describe('buildElbowPath leg trims', () => {
+  const lastPoint = (d: string): { x: number; y: number } => {
+    const parts = d.trim().split(/\s+/);
+    return {
+      x: Number(parts[parts.length - 2]),
+      y: Number(parts[parts.length - 1]),
+    };
+  };
+
+  it('trims only the final leg; corners stay put', () => {
+    // Horizontal exit, vertical arrival: corner over the end.
+    const ep: Endpoints = {
+      start: { x: 0, y: 0 },
+      end: { x: 200, y: 50 },
+      startNormal: { x: 1, y: 0 },
+      endNormal: { x: 0, y: -1 },
+    };
+    const plain = buildElbowPath(ep);
+    const trimmed = buildElbowPath(ep, 0, 10);
+    expect(plain).toContain('L 200 0'); // corner
+    expect(trimmed).toContain('L 200 0'); // corner unchanged
+    expect(lastPoint(trimmed)).toEqual({ x: 200, y: 40 });
+  });
+
+  it('clamps the trim to the leg length so the leg never inverts past its corner', () => {
+    // Final leg is only 5px (end nearly level with the start rail).
+    const ep: Endpoints = {
+      start: { x: 0, y: 0 },
+      end: { x: 200, y: 5 },
+      startNormal: { x: 1, y: 0 },
+      endNormal: { x: 0, y: -1 },
+    };
+    const trimmed = buildElbowPath(ep, 0, headBaseInset(14));
+    expect(lastPoint(trimmed)).toEqual({ x: 200, y: 0 }); // stops at the corner
+  });
+
+  it('trims the first leg toward its corner', () => {
+    const ep: Endpoints = {
+      start: { x: 0, y: 0 },
+      end: { x: 200, y: 50 },
+      startNormal: { x: 1, y: 0 },
+      endNormal: { x: 0, y: -1 },
+    };
+    const trimmed = buildElbowPath(ep, 10, 0);
+    expect(trimmed.startsWith('M 10 0')).toBe(true);
+  });
+
+  it('leaves the mid-rail of a same-axis elbow untouched', () => {
+    const ep: Endpoints = {
+      start: { x: 0, y: 0 },
+      end: { x: 200, y: 300 },
+      startNormal: { x: 0, y: 1 },
+      endNormal: { x: 0, y: -1 },
+    };
+    const plain = buildElbowPath(ep);
+    const trimmed = buildElbowPath(ep, 10, 10);
+    expect(plain).toContain('L 0 150');
+    expect(plain).toContain('L 200 150');
+    expect(trimmed).toContain('L 0 150'); // mid-rail identical
+    expect(trimmed).toContain('L 200 150');
+    expect(trimmed.startsWith('M 0 10')).toBe(true);
+    expect(lastPoint(trimmed)).toEqual({ x: 200, y: 290 });
+  });
+
+  it('is unchanged for zero trims', () => {
+    const ep: Endpoints = {
+      start: { x: 0, y: 0 },
+      end: { x: 200, y: 300 },
+      startNormal: { x: 0, y: 1 },
+      endNormal: { x: 0, y: -1 },
+    };
+    expect(buildElbowPath(ep, 0, 0)).toBe(buildElbowPath(ep));
+  });
+});

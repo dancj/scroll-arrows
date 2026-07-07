@@ -210,8 +210,18 @@ export function samplePath(
  * bracket); perpendicular sockets get a single L-corner. Center sockets (no
  * normal) fall back to the dominant delta axis. rough.js then sketches the
  * straight segments for the hand-drawn look.
+ *
+ * `startTrim`/`endTrim` shorten the first/last leg along its own axis (issue
+ * #59: stop the shaft at an arrowhead's base). Corners are computed from the
+ * true endpoints first, so trimming never moves the mid-rail; each trim is
+ * clamped to its leg's length so the leg stops at its corner instead of
+ * inverting past it.
  */
-export function buildElbowPath(ep: Endpoints): string {
+export function buildElbowPath(
+  ep: Endpoints,
+  startTrim = 0,
+  endTrim = 0,
+): string {
   const { start: s, end: e, startNormal: sn, endNormal: en } = ep;
   const dx = e.x - s.x;
   const dy = e.y - s.y;
@@ -236,6 +246,9 @@ export function buildElbowPath(ep: Endpoints): string {
     pts = [s, { x: e.x, y: s.y }, e];
   }
 
+  if (startTrim > 0) trimLeg(pts, 0, 1, startTrim);
+  if (endTrim > 0) trimLeg(pts, pts.length - 1, pts.length - 2, endTrim);
+
   return (
     `M ${r(pts[0]!.x)} ${r(pts[0]!.y)}` +
     pts
@@ -243,6 +256,16 @@ export function buildElbowPath(ep: Endpoints): string {
       .map((p) => ` L ${r(p.x)} ${r(p.y)}`)
       .join('')
   );
+}
+
+/** Move pts[i] toward pts[j] by `by`, clamped to that leg's length. */
+function trimLeg(pts: Point[], i: number, j: number, by: number): void {
+  const a = pts[i]!;
+  const b = pts[j]!;
+  const len = Math.hypot(b.x - a.x, b.y - a.y);
+  if (len === 0) return;
+  const k = Math.min(by, len) / len;
+  pts[i] = { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
 }
 
 /** Axis-aligned box, in the same coordinate space as the endpoints. */
@@ -350,10 +373,19 @@ export function routeBellies(
   return { b1, b2 };
 }
 
+/** Half-angle of the arrowhead's V. Shared with headBaseInset so the shaft
+ * inset lands exactly on the head's base. */
+const HEAD_SPREAD = Math.PI / 7;
+
+/** Depth of the arrowhead's base behind its tip, along the aim direction. */
+export function headBaseInset(size: number): number {
+  return size * Math.cos(HEAD_SPREAD);
+}
+
 /** Two short strokes forming an arrowhead at `tip`, opening along `dir`. */
 export function arrowHeadPath(tip: Point, dir: Point, size: number): string {
   const a = Math.atan2(dir.y, dir.x);
-  const spread = Math.PI / 7;
+  const spread = HEAD_SPREAD;
   const p1 = {
     x: tip.x - size * Math.cos(a - spread),
     y: tip.y - size * Math.sin(a - spread),
@@ -363,6 +395,38 @@ export function arrowHeadPath(tip: Point, dir: Point, size: number): string {
     y: tip.y - size * Math.sin(a + spread),
   };
   return `M ${r(p1.x)} ${r(p1.y)} L ${r(tip.x)} ${r(tip.y)} L ${r(p2.x)} ${r(p2.y)}`;
+}
+
+/**
+ * Pull the endpoints back along their tangents so the shaft terminates at an
+ * arrowhead's base instead of running into its tip (issue #59). The moved
+ * point is `p - tangent * inset` — for a side socket that is `p + normal *
+ * inset`, back along the arrival/departure path. Normals are preserved so
+ * cubicControls still bows the curve off the socket edges. When the summed
+ * insets would eat more than half the chord (tiny arrows), both scale down
+ * proportionally so the shaft keeps at least half the chord and the endpoints
+ * never cross. Curve route only — the elbow route trims its legs instead
+ * (see buildElbowPath).
+ */
+export function insetEndpoints(
+  ep: Endpoints,
+  startInset: number,
+  endInset: number,
+): Endpoints {
+  const total = startInset + endInset;
+  if (total <= 0) return ep;
+  const chord = Math.hypot(ep.end.x - ep.start.x, ep.end.y - ep.start.y);
+  const scale = Math.min(1, chord / 2 / total);
+  const st = startTangent(ep);
+  const et = endTangent(ep);
+  const si = startInset * scale;
+  const ei = endInset * scale;
+  return {
+    start: { x: ep.start.x - st.x * si, y: ep.start.y - st.y * si },
+    end: { x: ep.end.x - et.x * ei, y: ep.end.y - et.y * ei },
+    startNormal: ep.startNormal,
+    endNormal: ep.endNormal,
+  };
 }
 
 /** Tangent direction of the cubic at its end, for aiming the arrowhead. */
