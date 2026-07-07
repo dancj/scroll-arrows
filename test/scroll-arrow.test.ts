@@ -286,3 +286,88 @@ describe('ScrollArrow shaft/head junction (#59)', () => {
     document.querySelectorAll('svg').forEach((s) => s.remove());
   });
 });
+
+describe("ScrollArrow headStyle: 'solid' (#60)", () => {
+  // Same jsdom SVG-geometry stubs as the #59 suite above.
+  type SvgStubs = { getTotalLength?: unknown };
+  beforeEach(() => {
+    (SVGElement.prototype as SvgStubs).getTotalLength = () => 100;
+  });
+  afterEach(() => {
+    delete (SVGElement.prototype as SvgStubs).getTotalLength;
+  });
+
+  const anchors = () => ({
+    start: boxed({ left: 0, top: 0, width: 100, height: 40 }),
+    end: boxed({ left: 300, top: 0, width: 100, height: 40 }),
+  });
+
+  /** Render and return every path's { d, fill }, then clean up. */
+  const paths = (
+    opts: ConstructorParameters<typeof ScrollArrow>[0],
+  ): { d: string; fill: string }[] => {
+    new ScrollArrow(opts);
+    const out = [...document.querySelectorAll('svg path')].map((p) => ({
+      d: p.getAttribute('d') ?? '',
+      fill: p.getAttribute('fill') ?? '',
+    }));
+    document.querySelectorAll('svg').forEach((s) => s.remove());
+    return out;
+  };
+
+  it('fills the end head with the stroke color', () => {
+    const a = anchors();
+    const ps = paths({
+      ...a,
+      seed: 7,
+      head: 'end',
+      headStyle: 'solid',
+      stroke: '#123456',
+    });
+    const fills = ps.filter((p) => p.fill !== 'none');
+    expect(fills).toHaveLength(1);
+    expect(fills[0]!.fill).toBe('#123456');
+  });
+
+  it('keeps the solid head anchored at the true socket point', () => {
+    // The head's outline stroke still passes through the end socket (300, 20).
+    const a = anchors();
+    const ps = paths({ ...a, seed: 7, head: 'end', headStyle: 'solid' });
+    const headStroke = ps[ps.length - 1]!;
+    expect(headStroke.fill).toBe('none');
+    expect(headStroke.d).toMatch(/300[ ,]+20/);
+  });
+
+  it("renders identically for omitted vs explicit 'line' (R2)", () => {
+    const a = anchors();
+    const dflt = paths({ ...a, seed: 7, head: 'end' });
+    const line = paths({ ...a, seed: 7, head: 'end', headStyle: 'line' });
+    expect(line).toEqual(dflt);
+    expect(dflt.every((p) => p.fill === 'none')).toBe(true);
+  });
+
+  it("fills both heads for head: 'both'", () => {
+    const a = anchors();
+    const ps = paths({
+      ...a,
+      seed: 7,
+      head: 'both',
+      headStyle: 'solid',
+      stroke: '#123456',
+    });
+    expect(ps.filter((p) => p.fill === '#123456')).toHaveLength(2);
+  });
+
+  it("line paths keep fill='none' regardless of headStyle", () => {
+    const a = anchors();
+    const ps = paths({
+      ...a,
+      seed: 7,
+      head: 'end',
+      headStyle: 'solid',
+      stroke: '#123456',
+    });
+    // First path(s) are the line strokes; none of them may pick up the fill.
+    expect(ps[0]!.fill).toBe('none');
+  });
+});
